@@ -7,6 +7,7 @@ template <class FType>
 class ProblemsPool
 {
 protected:
+
   std::vector<FType*> mProblems;
 
 public:
@@ -14,6 +15,11 @@ public:
   void AddProblem(FType* problem)
   {
     mProblems.push_back(problem);
+  }
+
+  void DeleteProblem(unsigned problemIndex)
+  {
+    mProblems.erase(mProblems.begin() + problemIndex);
   }
 
   void GetBounds(double* lb, double* ub)
