@@ -3,6 +3,7 @@
 
 #include "problemsPool.hpp"
 #include "dataTypes.hpp"
+#include "evolvent.hpp"
 
 #include <vector>
 
@@ -35,6 +36,7 @@ protected:
   std::vector<Interval> mNextIntervals;
   std::vector<Trial> mNextPoints;
   bool mNeeRefillQueue;
+  Evolvent mEvolvent;
 
 public:
 
