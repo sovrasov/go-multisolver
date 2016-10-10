@@ -2,6 +2,11 @@
 #define GO_SOLVER_HPP
 
 #include "problemsPool.hpp"
+#include "dataTypes.hpp"
+
+#include <vector>
+
+enum StopType {Accuracy, OptimumVicinity, OptimalValue};
 
 struct SolverParameters
 {
@@ -22,33 +27,46 @@ class GOSolver
 {
 protected:
 
+  SolverParameters mParameters;
   ProblemsPool<FType> mProblems;
+  std::vector<bool> mActiveProblemsMask;
+  unsigned mIterationsCounter;
+  std::vector<Trial> mOptimumEstimations;
+  std::vector<Interval> mNextIntervals;
+  std::vector<Trial> mNextPoints;
+  bool mNeeRefillQueue;
 
 public:
 
   void SetProblemsPool(ProblemsPool<FType>& problems);
   void SetParameters(SolverParameters& params);
   void Solve();
-  GetOptimumEstimations() {}
+  std::vector<Trial> GetOptimumEstimations();
 
 };
 
 template <class FType>
 void GOSolver<FType>::SetProblemsPool(ProblemsPool<FType>& problems)
 {
-
+  mProblems = problems;
 }
 
 template <class FType>
 void GOSolver<FType>::SetParameters(SolverParameters& params)
 {
-
+  mParameters = params;
 }
 
 template <class FType>
 void GOSolver<FType>::Solve()
 {
 
+}
+
+template <class FType>
+std::vector<Trial> GOSolver<FType>::GetOptimumEstimations()
+{
+  return mOptimumEstimations;
 }
 
 #endif

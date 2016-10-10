@@ -20,12 +20,12 @@ int main(int argc, const char** argv)
 
   std::cout << "Problems pool created\n";
 
-  SolverParameters parameters(0.01, 4.0, 1, 100000);
+  SolverParameters parameters(0.01, 4.0, 1, 200000);
   GOSolver<gkls::GKLSFunction> solver;
   solver.SetParameters(parameters);
   solver.SetProblemsPool(pool);
   solver.Solve();
-  solver.GetOptimumEstimations();
+  std::vector<Trial> optimumEstimations = solver.GetOptimumEstimations();
 
   for(int i = 0; i < 100; i++)
     delete functions[i];
