@@ -18,7 +18,7 @@ private:
 
 public:
 	Evolvent();
-	Evolvent(int dimension, int tightness, MapType type);
+	Evolvent(int dimension, int tightness, MapType type = Simple);
 	~Evolvent();
 
 	void GetImage(double x, double y[]);
