@@ -11,7 +11,7 @@ class Evolvent
 protected:
 	int mDimension;
 	int mTightness;
-	
+
 	double mRho;
 	std::vector<double> mShiftScalars;
 
@@ -23,7 +23,6 @@ private:
 public:
 	Evolvent();
 	Evolvent(int dimension, int tightness, double* lb, double*ub, MapType type = Simple);
-	Evolvent(Evolvent& source);
 	~Evolvent();
 
 	void GetImage(double x, double y[]);

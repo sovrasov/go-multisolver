@@ -9,6 +9,7 @@
 #include <vector>
 #include <set>
 //#include <queue>
+#include <iostream>
 #include <algorithm>
 #include <stdexcept>
 #include <cmath>
@@ -53,6 +54,8 @@ protected:
   Evolvent mEvolvent;
   IntervalsQueue mQueue;
   std::vector<std::set<Interval*>> mSearchInformations;
+  unsigned mNumberOfActiveProblems;
+  unsigned mNumberOfTrials;
 
   void InitDataStructures();
   void FirstIteration();
@@ -64,6 +67,7 @@ protected:
   void EstimateOptimums();
   void RefillQueue();
   void CalculateNextPoints();
+  bool CheckStopCondition();
 
 public:
 
@@ -71,12 +75,14 @@ public:
   void SetParameters(SolverParameters& params);
   void Solve();
   std::vector<Trial> GetOptimumEstimations();
-
+  unsigned GetTrialsNumber() const { return mNumberOfTrials; }
+  unsigned GetIterationsNumber() const { return mIterationsCounter; }
 };
 
 template <class FType>
 void GOSolver<FType>::Solve()
 {
+  bool needStop = false;
   InitDataStructures();
   FirstIteration();
 
@@ -87,11 +93,30 @@ void GOSolver<FType>::Solve()
     if (mNeeRefillQueue)
       RefillQueue();
     CalculateNextPoints();
-    //CheckStop, modify mActiveProblemsMask, modification of refill flag
+    needStop = CheckStopCondition();
     mIterationsCounter++;
-  } while(mIterationsCounter < mParameters.iterationsLimit);
+  } while(mIterationsCounter < mParameters.iterationsLimit && !needStop);
 
   ClearDataStructures();
+}
+
+template <class FType>
+bool GOSolver<FType>::CheckStopCondition()
+{
+  bool needStop = false;
+  for (size_t i = 0; i < mParameters.numThreads; i++)
+  {
+    if (mNextIntervals[i]->delta < mParameters.eps)
+    {
+      mActiveProblemsMask[mNextIntervals[i]->problemIdx] = false;
+      mNumberOfActiveProblems--;
+    }
+  }
+
+  if (mNumberOfActiveProblems == 0)
+    needStop = true;
+
+  return needStop;
 }
 
 template <class FType>
@@ -104,7 +129,7 @@ void GOSolver<FType>::CalculateNextPoints()
         (((mNextIntervals[i]->zr - mNextIntervals[i]->zl) > 0) ? 1: -1) *
         pow(fabs(mNextIntervals[i]->zr - mNextIntervals[i]->zl) /
         mHEstimations[i], mProblems.GetDimension()) / 2. / mParameters.r;
-    //need Evolvent here?
+
     mEvolvent.GetImage(mNextPoints[i].x, mNextPoints[i].y);
   }
 }
@@ -179,6 +204,7 @@ void GOSolver<FType>::InsertIntervals()
     pNewInterval->zr = mNextIntervals[i]->zr;
     pNewInterval->delta = pow(pNewInterval->xr - pNewInterval->xl,
       1. / mProblems.GetDimension());
+    pNewInterval->problemIdx = mNextIntervals[i]->problemIdx;
     bool wasInserted =
       mSearchInformations[mNextIntervals[i]->problemIdx].insert(pNewInterval).second;
     if(!wasInserted)
@@ -206,10 +232,10 @@ void GOSolver<FType>::InsertIntervals()
 template <class FType>
 void GOSolver<FType>::MakeTrials()
 {
-//#pragma omp parallel for num_threads(mParameters.numThreads)
-  for(size_t i = 0; i < mParameters.numThreads; i++)
+  mNumberOfTrials += mParameters.numThreads;
+#pragma omp parallel for num_threads(mParameters.numThreads)
+  for(int i = 0; i < (int)mParameters.numThreads; i++)
   {
-    mEvolvent.GetImage(mNextPoints[i].x, mNextPoints[i].y);
     mNextPoints[i].z = mProblems.CalculateObjective(mNextPoints[i].y, mNextIntervals[i]->problemIdx);
   }
 }
@@ -269,6 +295,8 @@ void GOSolver<FType>::FirstIteration()
 
   mIterationsCounter = 1;
   mNeeRefillQueue = true;
+  mNumberOfActiveProblems = mProblems.GetNumberOfProblems();
+  mNumberOfTrials = mProblems.GetNumberOfProblems() * 2;
 }
 
 template <class FType>

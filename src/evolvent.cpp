@@ -46,10 +46,10 @@ Evolvent::Evolvent(int dimension, int tightness, double* lb, double* ub, MapType
 
 void Evolvent::GetImage(double x, double y[])
 {
-  for (int i = 0; i < mDimension; i++)
-		y[i] = mRho*y[i] + mShiftScalars[i];
-
   mapd(x, mTightness, y, mDimension, mMapKey);
+
+  for (int i = 0; i < mDimension; i++)
+    y[i] = mRho*y[i] + mShiftScalars[i];
 }
 
 int Evolvent::GetAllPreimages(double * p, double xp[])

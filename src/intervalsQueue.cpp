@@ -7,13 +7,13 @@ IntervalsQueue::IntervalsQueue(int _MaxSize)
 {
 	MaxSize = _MaxSize;
 	CurSize = 0;
-	pMem = new Interval*[MaxSize];
+  pMem.resize(MaxSize);// = new Interval*[MaxSize];
 }
 
 // ------------------------------------------------------------------------------------------------
 IntervalsQueue::~IntervalsQueue()
 {
-	delete[] pMem;
+	//delete[] pMem;
 }
 // ------------------------------------------------------------------------------------------------
 bool IntervalsQueue::IsEmpty() const
