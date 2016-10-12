@@ -14,7 +14,7 @@ int main(int argc, const char** argv)
     gkls::GKLSFunction* func = new gkls::GKLSFunction();
     func->SetFunctionClass(gkls::Hard, 3);
     func->SetType(gkls::TD);
-    func->SetFunctionNumber(i);
+    func->SetFunctionNumber(i + 1);
     pool.AddProblem(func);
   }
 
@@ -24,6 +24,7 @@ int main(int argc, const char** argv)
   GOSolver<gkls::GKLSFunction> solver;
   solver.SetParameters(parameters);
   solver.SetProblemsPool(pool);
+  std::cout << "Solver started\n";
   solver.Solve();
   std::vector<Trial> optimumEstimations = solver.GetOptimumEstimations();
 

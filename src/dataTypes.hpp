@@ -22,6 +22,8 @@ struct Interval
   double delta;
   unsigned problemIdx;
   Interval() {}
+  Interval(double _xl, double _xr) : xl(_xl), xr(_xr) {}
+
 };
 
 inline bool operator<(const Interval& i1, const Interval& i2)
