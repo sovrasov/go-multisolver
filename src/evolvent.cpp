@@ -1,52 +1,64 @@
 #include "evolvent.hpp"
 #include <cassert>
+#include <cmath>
 
 Evolvent::Evolvent()
 {
-	mIsInitialized = false;
+  mIsInitialized = false;
 }
 
 Evolvent::~Evolvent()
 {
 }
 
-Evolvent::Evolvent(int dimension, int tightness, MapType type)
+Evolvent::Evolvent(int dimension, int tightness, double* lb, double* ub, MapType type)
 {
-	assert(dimension > 1);
-	assert(tightness > 2);
+  assert(dimension > 1);
+  assert(tightness > 2);
 
-	mDimension = dimension;
-	mTightness = tightness;
-	mMapType = type;
+  mDimension = dimension;
+  mTightness = tightness;
+  mMapType = type;
 
-	switch (mMapType)
+  mShiftScalars.resize(mDimension);
+  mRho = 0.;
+  for (int i = 0; i < mDimension; i++)
 	{
-	case Simple:
-		mMapKey = 1;
-		break;
-	case Linear:
-		mMapKey = 2;
-		break;
-	case Noninjective:
-		mMapKey = 3;
-		break;
+		mRho = fmax(mRho, ub[i] - lb[i]);
+		mShiftScalars[i] = 0.5*(lb[i] + ub[i]);
 	}
 
-	mIsInitialized = true;
+  switch (mMapType)
+  {
+  case Simple:
+    mMapKey = 1;
+    break;
+  case Linear:
+    mMapKey = 2;
+    break;
+  case Noninjective:
+    mMapKey = 3;
+    break;
+  }
+
+  mIsInitialized = true;
 }
 
 void Evolvent::GetImage(double x, double y[])
 {
-	mapd(x, mTightness, y, mDimension, mMapKey);
+  for (int i = 0; i < mDimension; i++)
+		y[i] = mRho*y[i] + mShiftScalars[i];
+
+  mapd(x, mTightness, y, mDimension, mMapKey);
 }
 
 int Evolvent::GetAllPreimages(double * p, double xp[])
 {
-	int preimNumber = 1;
-	if(mMapType == Noninjective)
-		invmad(mTightness, xp, MAX_PREIMAGES, &preimNumber, p, mDimension, 4);
-	else
-		xyd(xp, mTightness, p, mDimension);
+  int preimNumber = 1;
+  if(mMapType == Noninjective)
+    invmad(mTightness, xp, MAX_PREIMAGES, &preimNumber, p, mDimension, 4);
+  else
+    xyd(xp, mTightness, p, mDimension);
 
-	return preimNumber;
+  return preimNumber;
 }

@@ -25,7 +25,7 @@ public:
   void GetBounds(double* lb, double* ub)
   {
     if (mProblems.size() > 0)
-      mProblems[0]->GetBounds(lb, ub);
+      mProblems[0]->GetDomainBounds(lb, ub);
   }
 
   unsigned GetNumberOfProblems() const
