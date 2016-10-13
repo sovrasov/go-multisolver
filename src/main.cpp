@@ -5,25 +5,24 @@
 
 #include <iostream>
 #include <chrono>
+#include <memory>
 
 int main(int argc, const char** argv)
 {
   const unsigned nProblems = 100;
   ProblemsPool<gkls::GKLSFunction> pool;
-  gkls::GKLSFunction** functions = new gkls::GKLSFunction*[nProblems];
   for(unsigned i = 0; i < nProblems; i++)
   {
     gkls::GKLSFunction* func = new gkls::GKLSFunction();
-    functions[i] = func;
     func->SetFunctionClass(gkls::Simple, 4);
     func->SetType(gkls::TD);
     func->SetFunctionNumber(i + 1);
-    pool.AddProblem(func);
+    pool.AddProblem(std::shared_ptr<gkls::GKLSFunction>(func));
   }
 
   std::cout << "Problems pool created\n";
 
-  SolverParameters parameters(0.01, 4.7, 1, 20000000, StopType::OptimumVicinity);
+  SolverParameters parameters(0.02, 4.7, 4, 5000000, StopType::OptimumVicinity);
   GOSolver<gkls::GKLSFunction> solver;
   solver.SetParameters(parameters);
   solver.SetProblemsPool(pool);
@@ -33,18 +32,14 @@ int main(int argc, const char** argv)
   auto end = std::chrono::system_clock::now();
   std::vector<Trial> optimumEstimations = solver.GetOptimumEstimations();
 
-	for(size_t i = 0; i < optimumEstimations.size(); i++)
-		std::cout << "Optimum value in problem #" << i + 1 << ": " << optimumEstimations[i].z << "\n";
+	//for(size_t i = 0; i < optimumEstimations.size(); i++)
+	//	std::cout << "Optimum value in problem #" << i + 1 << ": " << optimumEstimations[i].z << "\n";
 
   std::cout << "Number of trials: " << solver.GetTrialsNumber()
     << "\nNumber of iterations: " << solver.GetIterationsNumber() << "\n";
 
   std::chrono::duration<double> elapsed_seconds = end - start;
   std::cout << "Time elapsed: " << elapsed_seconds.count() << "s\n";
-
-  for(int i = 0; i < nProblems; i++)
-    delete functions[i];
-  delete[] functions;
 
   return 0;
 }

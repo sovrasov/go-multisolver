@@ -4,7 +4,6 @@
 #include "problemsPool.hpp"
 #include "dataTypes.hpp"
 #include "evolvent.hpp"
-#include "intervalsQueue.hpp"
 
 #include <vector>
 #include <set>
@@ -17,6 +16,7 @@
 namespace solver_internal
 {
   const double zeroHLevel = 1e-12;
+
   bool checkVectorsDiff(const double* y1, const double* y2, size_t dim, double eps)
   {
     for (size_t i = 0; i < dim; i++)
@@ -26,6 +26,15 @@ namespace solver_internal
     }
 
     return false;
+  }
+
+  double vectorsMaxDiff(const double* y1, const double* y2, size_t dim)
+  {
+    double diff = 0.;
+    for (size_t i = 0; i < dim; i++)
+      diff = fmax(fabs(y1[i] - y2[i]), diff);
+
+    return diff;
   }
 }
 
@@ -39,6 +48,7 @@ struct SolverParameters
   unsigned iterationsLimit;
   unsigned evloventTightness = 12;
   StopType criterion;
+  bool logDeviations;
 
   SolverParameters() {}
   SolverParameters(double _eps, double _r,
@@ -57,14 +67,15 @@ protected:
   ProblemsPool<FType> mProblems;
   std::vector<bool> mActiveProblemsMask;
   std::vector<double> mHEstimations;
-  unsigned mIterationsCounter;
   std::vector<Trial> mOptimumEstimations;
   std::vector<Interval*> mNextIntervals;
   std::vector<Trial> mNextPoints;
-  bool mNeeRefillQueue;
-  Evolvent mEvolvent;
-  std::priority_queue<Interval*, std::vector<Interval*>, CompareByR> mQueue;
   std::vector<std::set<Interval*>> mSearchInformations;
+  std::priority_queue<Interval*, std::vector<Interval*>, CompareByR> mQueue;
+  std::vector<StatPoint> mStatiscics;
+  Evolvent mEvolvent;
+  bool mNeeRefillQueue;
+  unsigned mIterationsCounter;
   unsigned mNumberOfActiveProblems;
   unsigned mNumberOfTrials;
 
@@ -88,6 +99,7 @@ public:
   std::vector<Trial> GetOptimumEstimations();
   unsigned GetTrialsNumber() const { return mNumberOfTrials; }
   unsigned GetIterationsNumber() const { return mIterationsCounter; }
+  std::vector<double> GetStatistics() const { return mStatiscics; }
 };
 
 template <class FType>
@@ -99,8 +111,8 @@ void GOSolver<FType>::Solve()
 
   do {
     MakeTrials();
-    InsertIntervals();//modification of refill flag
-    EstimateOptimums();//modification of refill flag
+    InsertIntervals();
+    EstimateOptimums();
     if (mNeeRefillQueue || mQueue.size() < mParameters.numThreads)
       RefillQueue();
     CalculateNextPoints();
@@ -168,9 +180,12 @@ void GOSolver<FType>::CalculateNextPoints()
     mNextIntervals[i] = mQueue.top();
     mQueue.pop();
     mNextPoints[i].x = 0.5 * (mNextIntervals[i]->xl + mNextIntervals[i]->xr) -
-        (((mNextIntervals[i]->zr - mNextIntervals[i]->zl) > 0) ? 1: -1) *
+        (((mNextIntervals[i]->zr - mNextIntervals[i]->zl) > 0.) ? 1. : -1.) *
         pow(fabs(mNextIntervals[i]->zr - mNextIntervals[i]->zl) /
-        mHEstimations[i], mProblems.GetDimension()) / 2. / mParameters.r;
+        mHEstimations[mNextIntervals[i]->problemIdx], mProblems.GetDimension()) / 2. / mParameters.r;
+
+    if (mNextPoints[i].x > mNextIntervals[i]->xr || mNextPoints[i].x < mNextIntervals[i]->xl)
+      throw std::runtime_error("The next point is outside of the subdivided interval");
 
     mEvolvent.GetImage(mNextPoints[i].x, mNextPoints[i].y);
   }
@@ -181,7 +196,7 @@ void GOSolver<FType>::RefillQueue()
 {
   mQueue = {};
 
-  for(size_t i = 0; i < mProblems.GetNumberOfProblems(); i++)
+  for(size_t i = 0; i < mProblems.Size(); i++)
     if(mActiveProblemsMask[i])
     {
       for(auto it = mSearchInformations[i].begin(); it != mSearchInformations[i].end(); ++it)
@@ -205,6 +220,15 @@ void GOSolver<FType>::EstimateOptimums()
     {
       mOptimumEstimations[problemIdx] = mNextPoints[i];
       mNeeRefillQueue = true;
+      if (mParameters.logDeviations)
+      {
+        StatPoint currentDevs(mNumberOfTrials, 2., 0.);
+
+        for (size_t i = 0; i < mProblems.Size(); i++)
+        {
+
+        }
+      }
     }
   }
 }
@@ -212,8 +236,7 @@ void GOSolver<FType>::EstimateOptimums()
 template <class FType>
 void GOSolver<FType>::UpdateH(const Interval* i)
 {
-  double intervalH = fabs(i->zr - i->zl) / pow(i->xr - i->xl,
-    1. / mProblems.GetDimension());
+  double intervalH = fabs(i->zr - i->zl) / i->delta;
   double oldH = mHEstimations[i->problemIdx];
 
   if (intervalH > oldH || (oldH == 1.0 && intervalH > solver_internal::zeroHLevel))
@@ -292,19 +315,19 @@ void GOSolver<FType>::InitDataStructures()
   mQueue = {};
   mNextPoints.resize(mParameters.numThreads);
   mNextIntervals.resize(mParameters.numThreads);
-  mActiveProblemsMask.resize(mProblems.GetNumberOfProblems());
-  mSearchInformations.resize(mProblems.GetNumberOfProblems());
+  mActiveProblemsMask.resize(mProblems.Size());
+  mSearchInformations.resize(mProblems.Size());
   std::fill(mActiveProblemsMask.begin(), mActiveProblemsMask.end(), true);
-  mHEstimations.resize(mProblems.GetNumberOfProblems());
+  mHEstimations.resize(mProblems.Size());
   std::fill(mHEstimations.begin(), mHEstimations.end(), 1.0);
-  mOptimumEstimations.resize(mProblems.GetNumberOfProblems());
-  std::fill(mOptimumEstimations.begin(), mOptimumEstimations.end(), Trial(0, HUGE_VAL));
+  mOptimumEstimations.resize(mProblems.Size());
+  std::fill(mOptimumEstimations.begin(), mOptimumEstimations.end(), Trial(0., HUGE_VAL));
 }
 
 template <class FType>
 void GOSolver<FType>::ClearDataStructures()
 {
-  for (size_t i = 0; i < mProblems.GetNumberOfProblems(); i++)
+  for (size_t i = 0; i < mProblems.Size(); i++)
   {
     for(auto it = mSearchInformations[i].begin(); it != mSearchInformations[i].end(); ++it)
       delete *it;
@@ -316,7 +339,7 @@ void GOSolver<FType>::ClearDataStructures()
 template <class FType>
 void GOSolver<FType>::FirstIteration()
 {
-  for (size_t i = 0; i < mProblems.GetNumberOfProblems(); i++)
+  for (size_t i = 0; i < mProblems.Size(); i++)
   {
     Interval* pFirstInterval = new Interval(0., 1.);
     pFirstInterval->delta = 1.;
@@ -327,18 +350,20 @@ void GOSolver<FType>::FirstIteration()
     mEvolvent.GetImage(pFirstInterval->xr, y);
     pFirstInterval->zr = mProblems.CalculateObjective(y, i);
     mSearchInformations[i].insert(pFirstInterval);
+    UpdateH(pFirstInterval);
 
     if(i < mParameters.numThreads)
     {
       mNextPoints[i].x = 0.5;
+      mEvolvent.GetImage(mNextPoints[i].x, mNextPoints[i].y);
       mNextIntervals[i] = pFirstInterval;
     }
   }
 
   mIterationsCounter = 1;
   mNeeRefillQueue = true;
-  mNumberOfActiveProblems = mProblems.GetNumberOfProblems();
-  mNumberOfTrials = mProblems.GetNumberOfProblems() * 2;
+  mNumberOfActiveProblems = mProblems.Size();
+  mNumberOfTrials = mProblems.Size() * 2;
 }
 
 template <class FType>
