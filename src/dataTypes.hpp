@@ -31,4 +31,13 @@ inline bool operator<(const Interval& i1, const Interval& i2)
   return i1.xl < i2.xl;
 }
 
+class CompareByR
+{
+public:
+  bool operator() (const Interval* i1, const Interval* i2)
+  {
+    return i1->R < i2->R;
+  }
+};
+
 #endif

@@ -23,7 +23,7 @@ int main(int argc, const char** argv)
 
   std::cout << "Problems pool created\n";
 
-  SolverParameters parameters(0.01, 4.5, 1, 100000);
+  SolverParameters parameters(0.005, 4.5, 1, 200000);
   GOSolver<gkls::GKLSFunction> solver;
   solver.SetParameters(parameters);
   solver.SetProblemsPool(pool);

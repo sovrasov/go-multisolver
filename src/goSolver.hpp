@@ -8,7 +8,7 @@
 
 #include <vector>
 #include <set>
-//#include <queue>
+#include <queue>
 #include <iostream>
 #include <algorithm>
 #include <stdexcept>
@@ -52,7 +52,7 @@ protected:
   std::vector<Trial> mNextPoints;
   bool mNeeRefillQueue;
   Evolvent mEvolvent;
-  IntervalsQueue mQueue;
+  std::priority_queue<Interval*, std::vector<Interval*>, CompareByR> mQueue;
   std::vector<std::set<Interval*>> mSearchInformations;
   unsigned mNumberOfActiveProblems;
   unsigned mNumberOfTrials;
@@ -90,7 +90,7 @@ void GOSolver<FType>::Solve()
     MakeTrials();
     InsertIntervals();//modification of refill flag
     EstimateOptimums();//modification of refill flag
-    if (mNeeRefillQueue)
+    if (mNeeRefillQueue || mQueue.size() < mParameters.numThreads)
       RefillQueue();
     CalculateNextPoints();
     needStop = CheckStopCondition();
@@ -124,7 +124,8 @@ void GOSolver<FType>::CalculateNextPoints()
 {
   for(size_t i = 0; i < mParameters.numThreads; i++)
   {
-    mNextIntervals[i] = mQueue.Pop();
+    mNextIntervals[i] = mQueue.top();
+    mQueue.pop();
     mNextPoints[i].x = 0.5 * (mNextIntervals[i]->xl + mNextIntervals[i]->xr) -
         (((mNextIntervals[i]->zr - mNextIntervals[i]->zl) > 0) ? 1: -1) *
         pow(fabs(mNextIntervals[i]->zr - mNextIntervals[i]->zl) /
@@ -137,7 +138,7 @@ void GOSolver<FType>::CalculateNextPoints()
 template <class FType>
 void GOSolver<FType>::RefillQueue()
 {
-  mQueue.Clear();
+  mQueue = {};
 
   for(size_t i = 0; i < mProblems.GetNumberOfProblems(); i++)
     if(mActiveProblemsMask[i])
@@ -146,7 +147,7 @@ void GOSolver<FType>::RefillQueue()
       {
         auto interval = *it;
         interval->R = CalculateR(interval);
-        mQueue.Push(interval);
+        mQueue.push(interval);
       }
     }
 
@@ -223,8 +224,8 @@ void GOSolver<FType>::InsertIntervals()
     {
       pNewInterval->R = CalculateR(pNewInterval);
       mNextIntervals[i]->R = CalculateR(mNextIntervals[i]);
-      mQueue.Push(pNewInterval);
-      mQueue.Push(mNextIntervals[i]);
+      mQueue.push(pNewInterval);
+      mQueue.push(mNextIntervals[i]);
     }
   }
 }
@@ -247,7 +248,7 @@ void GOSolver<FType>::InitDataStructures()
   mProblems.GetBounds(leftDomainBound, rightDomainBound);
   mEvolvent = Evolvent(mProblems.GetDimension(), mParameters.evloventTightness,
     leftDomainBound, rightDomainBound);
-  mQueue.Clear();
+  mQueue = {};
   mNextPoints.resize(mParameters.numThreads);
   mNextIntervals.resize(mParameters.numThreads);
   mActiveProblemsMask.resize(mProblems.GetNumberOfProblems());
@@ -268,7 +269,7 @@ void GOSolver<FType>::ClearDataStructures()
       delete *it;
     mSearchInformations[i].clear();
   }
-  mQueue.Clear();
+  mQueue = {};
 }
 
 template <class FType>
