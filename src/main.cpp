@@ -15,7 +15,7 @@ int main(int argc, const char** argv)
   {
     gkls::GKLSFunction* func = new gkls::GKLSFunction();
     functions[i] = func;
-    func->SetFunctionClass(gkls::Simple, 2);
+    func->SetFunctionClass(gkls::Simple, 4);
     func->SetType(gkls::TD);
     func->SetFunctionNumber(i + 1);
     pool.AddProblem(func);
@@ -23,7 +23,7 @@ int main(int argc, const char** argv)
 
   std::cout << "Problems pool created\n";
 
-  SolverParameters parameters(0.005, 4.5, 1, 200000);
+  SolverParameters parameters(0.01, 4.7, 1, 20000000, StopType::OptimumVicinity);
   GOSolver<gkls::GKLSFunction> solver;
   solver.SetParameters(parameters);
   solver.SetProblemsPool(pool);

@@ -14,13 +14,22 @@
 #include <stdexcept>
 #include <cmath>
 
-namespace solver_consts
+namespace solver_internal
 {
   const double zeroHLevel = 1e-12;
+  bool checkVectorsDiff(const double* y1, const double* y2, size_t dim, double eps)
+  {
+    for (size_t i = 0; i < dim; i++)
+    {
+      if (fabs(y1[i] - y2[i]) > eps)
+        return true;
+    }
+
+    return false;
+  }
 }
 
-
-enum StopType {Accuracy, OptimumVicinity, OptimalValue};
+enum class StopType {Accuracy, OptimumVicinity, OptimalValue};
 
 struct SolverParameters
 {
@@ -29,11 +38,13 @@ struct SolverParameters
   unsigned numThreads;
   unsigned iterationsLimit;
   unsigned evloventTightness = 12;
+  StopType criterion;
 
   SolverParameters() {}
   SolverParameters(double _eps, double _r,
-      unsigned _numThreads, unsigned _iterationsLimit) :
-        eps(_eps), r(_r), numThreads(_numThreads), iterationsLimit(_iterationsLimit)
+      unsigned _numThreads, unsigned _iterationsLimit, StopType _criterion = StopType::Accuracy) :
+        eps(_eps), r(_r), numThreads(_numThreads), iterationsLimit(_iterationsLimit),
+        criterion(_criterion)
   {}
 };
 
@@ -106,10 +117,40 @@ bool GOSolver<FType>::CheckStopCondition()
   bool needStop = false;
   for (size_t i = 0; i < mParameters.numThreads; i++)
   {
-    if (mNextIntervals[i]->delta < mParameters.eps)
+    switch (mParameters.criterion)
     {
-      mActiveProblemsMask[mNextIntervals[i]->problemIdx] = false;
-      mNumberOfActiveProblems--;
+    case StopType::Accuracy:
+      if (mNextIntervals[i]->delta < mParameters.eps)
+      {
+        mActiveProblemsMask[mNextIntervals[i]->problemIdx] = false;
+        mNumberOfActiveProblems--;
+      }
+      break;
+    case StopType::OptimumVicinity:
+    {
+      double optimum[solverMaxDim];
+      mProblems.GetOptimumCoordinates(optimum, mNextIntervals[i]->problemIdx);
+      bool optimumReached = !solver_internal::checkVectorsDiff(
+        optimum, mNextPoints[i].y, mProblems.GetDimension(), mParameters.eps);
+      if(optimumReached)
+      {
+        mActiveProblemsMask[mNextIntervals[i]->problemIdx] = false;
+        mNumberOfActiveProblems--;
+        std::cout << "Problem # " << mNextIntervals[i]->problemIdx + 1 << " of " <<
+          mNumberOfActiveProblems + 1 <<" has been solved!\n";
+      }
+    }
+      break;
+    case StopType::OptimalValue:
+    {
+      double optValue = mProblems.GetOptimalValue(mNextIntervals[i]->problemIdx);
+      if(mOptimumEstimations[mNextIntervals[i]->problemIdx].z - optValue < mParameters.eps)
+      {
+        mActiveProblemsMask[mNextIntervals[i]->problemIdx] = false;
+        mNumberOfActiveProblems--;
+      }
+    }
+      break;
     }
   }
 
@@ -175,7 +216,7 @@ void GOSolver<FType>::UpdateH(const Interval* i)
     1. / mProblems.GetDimension());
   double oldH = mHEstimations[i->problemIdx];
 
-  if (intervalH > oldH || (oldH == 1.0 && intervalH > solver_consts::zeroHLevel))
+  if (intervalH > oldH || (oldH == 1.0 && intervalH > solver_internal::zeroHLevel))
   {
     mHEstimations[i->problemIdx] = intervalH;
     mNeeRefillQueue = true;

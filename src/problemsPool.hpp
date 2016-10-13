@@ -45,6 +45,16 @@ public:
   {
     return mProblems[problemIndex]->Calculate(y);
   }
+
+  double GetOptimalValue(unsigned problemIndex)
+  {
+    return mProblems[problemIndex]->GetOptimalValue();
+  }
+
+  void GetOptimumCoordinates(double* y, unsigned problemIndex)
+  {
+    mProblems[problemIndex]->GetOptimumCoordinates(y);
+  }
 };
 
 #endif
