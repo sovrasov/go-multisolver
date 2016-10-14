@@ -113,9 +113,9 @@ void GOSolver<FType>::Solve()
 
   do {
     MakeTrials();
-    InsertIntervals();
     EstimateOptimums();
-    if(mNumberOfTrials % 500 == 0)
+    InsertIntervals();
+    if(mParameters.logDeviations && mNumberOfTrials % 500 == 0)
       CollectStatistics();
     if (mNeeRefillQueue || mQueue.size() < mParameters.numThreads)
       RefillQueue();
@@ -125,9 +125,9 @@ void GOSolver<FType>::Solve()
   } while(mIterationsCounter < mParameters.iterationsLimit && !needStop);
 
   MakeTrials();
-  InsertIntervals();
   EstimateOptimums();
-  CollectStatistics();
+  if(mParameters.logDeviations)
+    CollectStatistics();
 
   ClearDataStructures();
 }
@@ -135,30 +135,20 @@ void GOSolver<FType>::Solve()
 template <class FType>
 void GOSolver<FType>::CollectStatistics()
 {
-  if (mParameters.logDeviations)
+  StatPoint currentDevs(mNumberOfTrials, 0., 0.);
+  for (size_t j = 0; j < mProblems.Size(); j++)
   {
-    StatPoint currentDevs(mNumberOfTrials, 0., 0.);
-    for (size_t j = 0; j < mProblems.Size(); j++)
-    {
-      double optPoint[solverMaxDim];
-      mProblems.GetOptimumCoordinates(optPoint, j);
-      double difference = solver_internal::vectorsMaxDiff(optPoint, mOptimumEstimations[j].y, mProblems.GetDimension());
-      if (mSearchInformations[j].size() == 1)
-        difference = 2.;
-      currentDevs.meanDev += difference;
-      //currentDevs.maxDev = fmax(currentDevs.maxDev, difference);
-      if (difference > currentDevs.maxDev)
-      {
-        currentDevs.maxDev = difference;
-        if (mNumberOfTrials > 35000)
-          std::cout << "Max dev at the task " << j << " = " << currentDevs.maxDev << " value: "
-          << mProblems.CalculateObjective(mOptimumEstimations[j].y, j) << "\n";
-      }
-    }
-    currentDevs.meanDev /= mProblems.Size();
-
-    mStatiscics.push_back(currentDevs);
+    double optPoint[solverMaxDim];
+    mProblems.GetOptimumCoordinates(optPoint, j);
+    double difference = solver_internal::vectorsMaxDiff(optPoint, mOptimumEstimations[j].y, mProblems.GetDimension());
+    //if (mSearchInformations[j].size() == 1)
+      //difference = ;
+    currentDevs.meanDev += difference;
+    currentDevs.maxDev = fmax(currentDevs.maxDev, difference);
   }
+  currentDevs.meanDev /= mProblems.Size();
+
+  mStatiscics.push_back(currentDevs);
 }
 
 
@@ -191,8 +181,9 @@ bool GOSolver<FType>::CheckStopCondition()
     {
       mActiveProblemsMask[mNextIntervals[i]->problemIdx] = false;
       mNumberOfActiveProblems--;
-      std::cout << "Problem # " << mNextIntervals[i]->problemIdx + 1 << " of " <<
-        mNumberOfActiveProblems + 1 << " has been solved!\n";
+      std::cout << "Problem # " << mNextIntervals[i]->problemIdx + 1 <<
+        " has been solved! Trials performed: " << mNumberOfTrials <<
+        " Problems left: " << mNumberOfActiveProblems << "\n";
     }
   }
 
@@ -338,6 +329,7 @@ void GOSolver<FType>::InitDataStructures()
   mNextIntervals.resize(mParameters.numThreads);
   mActiveProblemsMask.resize(mProblems.Size());
   mSearchInformations.resize(mProblems.Size());
+  mStatiscics.resize(0);
   std::fill(mActiveProblemsMask.begin(), mActiveProblemsMask.end(), true);
   mHEstimations.resize(mProblems.Size());
   std::fill(mHEstimations.begin(), mHEstimations.end(), 1.0);
