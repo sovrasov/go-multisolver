@@ -10,6 +10,8 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES MSVC)
   add_definitions(/EHsc /openmp)
 endif()
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3d-party)
+
 file(GLOB SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/GKLS/*.hpp
@@ -18,3 +20,4 @@ file(GLOB SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/Grishagin/*.cpp)
 
 add_executable(${PROJECT_NAME_STR} ${SRC_FILES})
+set_target_properties(${PROJECT_NAME_STR} PROPERTIES LINK_FLAGS "-fopenmp")

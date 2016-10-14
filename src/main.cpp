@@ -5,25 +5,41 @@
 
 #include <iostream>
 #include <chrono>
+#include <memory>
+#include <cmdline.h>
 
-int main(int argc, const char** argv)
+int main(int argc, char** argv)
 {
+  cmdline::parser parser;
+  parser.add<int>("dimension", 'd', "test problems dumension", false, 2,
+     cmdline::range(1, 5));
+  parser.add<int>("threadsNum", 't', "test problems dumension", false, 1,
+     cmdline::range(1, 32));
+  parser.add<double>("reliability", 'r', "reliability parameter for the method",
+    false, 3.5, cmdline::range(1., 1000.));
+  parser.add<double>("accuracy", 'e', "accuracy of the method",  false, 0.01);
+  parser.add<int>("trialsLimit", 'l', "limit of trials for the method", false, 5000000);
+  parser.parse_check(argc, argv);
+
   const unsigned nProblems = 100;
   ProblemsPool<gkls::GKLSFunction> pool;
-  gkls::GKLSFunction** functions = new gkls::GKLSFunction*[nProblems];
   for(unsigned i = 0; i < nProblems; i++)
   {
     gkls::GKLSFunction* func = new gkls::GKLSFunction();
-    functions[i] = func;
-    func->SetFunctionClass(gkls::Simple, 2);
+    func->SetFunctionClass(gkls::Simple, parser.get<int>("dimension"));
     func->SetType(gkls::TD);
     func->SetFunctionNumber(i + 1);
-    pool.AddProblem(func);
+    pool.AddProblem(std::shared_ptr<gkls::GKLSFunction>(func));
   }
 
   std::cout << "Problems pool created\n";
 
-  SolverParameters parameters(0.01, 4.5, 1, 100000);
+  SolverParameters parameters(parser.get<double>("accuracy"),
+      parser.get<double>("reliability"),
+      parser.get<int>("threadsNum"),
+      parser.get<int>("trialsLimit"), StopType::OptimumVicinity);
+  parameters.logDeviations = false;
+
   GOSolver<gkls::GKLSFunction> solver;
   solver.SetParameters(parameters);
   solver.SetProblemsPool(pool);
@@ -32,19 +48,19 @@ int main(int argc, const char** argv)
   solver.Solve();
   auto end = std::chrono::system_clock::now();
   std::vector<Trial> optimumEstimations = solver.GetOptimumEstimations();
+  std::vector<StatPoint> statistics = solver.GetStatistics();
 
-	for(size_t i = 0; i < optimumEstimations.size(); i++)
-		std::cout << "Optimum value in problem #" << i + 1 << ": " << optimumEstimations[i].z << "\n";
+  //for (size_t i = 0; i < statistics.size(); i++)
+  //  std::cout << "(" << statistics[i].trial << ": " << statistics[i].meanDev << " " <<
+  //   statistics[i].maxDev << ")\n";
+  //for(size_t i = 0; i < optimumEstimations.size(); i++)
+  //  std::cout << "Optimum value in problem #" << i + 1 << ": " << optimumEstimations[i].z << "\n";
 
   std::cout << "Number of trials: " << solver.GetTrialsNumber()
     << "\nNumber of iterations: " << solver.GetIterationsNumber() << "\n";
 
   std::chrono::duration<double> elapsed_seconds = end - start;
   std::cout << "Time elapsed: " << elapsed_seconds.count() << "s\n";
-
-  for(int i = 0; i < nProblems; i++)
-    delete functions[i];
-  delete[] functions;
 
   return 0;
 }

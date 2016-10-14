@@ -2,17 +2,18 @@
 #define PROBLEMS_POOL_HPP
 
 #include <vector>
+#include <memory>
 
 template <class FType>
 class ProblemsPool
 {
 protected:
 
-  std::vector<FType*> mProblems;
+  std::vector<std::shared_ptr<FType>> mProblems;
 
 public:
 
-  void AddProblem(FType* problem)
+  void AddProblem(std::shared_ptr<FType> problem)
   {
     mProblems.push_back(problem);
   }
@@ -28,7 +29,7 @@ public:
       mProblems[0]->GetDomainBounds(lb, ub);
   }
 
-  unsigned GetNumberOfProblems() const
+  unsigned Size() const
   {
     return mProblems.size();
   }
@@ -44,6 +45,16 @@ public:
   double CalculateObjective(const double* y, unsigned problemIndex)
   {
     return mProblems[problemIndex]->Calculate(y);
+  }
+
+  double GetOptimalValue(unsigned problemIndex) const
+  {
+    return mProblems[problemIndex]->GetOptimalValue();
+  }
+
+  void GetOptimumCoordinates(double* y, unsigned problemIndex) const
+  {
+    mProblems[problemIndex]->GetOptimumCoordinates(y);
   }
 };
 
