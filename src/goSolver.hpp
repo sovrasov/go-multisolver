@@ -16,6 +16,7 @@
 namespace solver_internal
 {
   const double zeroHLevel = 1e-12;
+  using PriorityQueue = std::priority_queue<Interval*, std::vector<Interval*>, CompareByR>;
 
   bool checkVectorsDiff(const double* y1, const double* y2, size_t dim, double eps)
   {
@@ -71,7 +72,7 @@ protected:
   std::vector<Interval*> mNextIntervals;
   std::vector<Trial> mNextPoints;
   std::vector<std::set<Interval*>> mSearchInformations;
-  std::priority_queue<Interval*, std::vector<Interval*>, CompareByR> mQueue;
+  solver_internal::PriorityQueue mQueue;
   std::vector<StatPoint> mStatiscics;
   Evolvent mEvolvent;
   bool mNeeRefillQueue;
@@ -186,7 +187,7 @@ bool GOSolver<FType>::CheckStopCondition()
         mProblems.GetOptimalValue(mNextIntervals[i]->problemIdx) < mParameters.eps;
     }
 
-    if (mNextIntervals[i]->delta < mParameters.eps)
+    if (isOptimumReached)
     {
       mActiveProblemsMask[mNextIntervals[i]->problemIdx] = false;
       mNumberOfActiveProblems--;
@@ -223,7 +224,7 @@ void GOSolver<FType>::CalculateNextPoints()
 template <class FType>
 void GOSolver<FType>::RefillQueue()
 {
-  mQueue = {};
+  mQueue = solver_internal::PriorityQueue();
 
   for(size_t i = 0; i < mProblems.Size(); i++)
     if(mActiveProblemsMask[i])
@@ -332,7 +333,7 @@ void GOSolver<FType>::InitDataStructures()
   mProblems.GetBounds(leftDomainBound, rightDomainBound);
   mEvolvent = Evolvent(mProblems.GetDimension(), mParameters.evloventTightness,
     leftDomainBound, rightDomainBound);
-  mQueue = {};
+  mQueue = solver_internal::PriorityQueue();
   mNextPoints.resize(mParameters.numThreads);
   mNextIntervals.resize(mParameters.numThreads);
   mActiveProblemsMask.resize(mProblems.Size());
@@ -353,7 +354,7 @@ void GOSolver<FType>::ClearDataStructures()
       delete *it;
     mSearchInformations[i].clear();
   }
-  mQueue = {};
+  mQueue = solver_internal::PriorityQueue();
 }
 
 template <class FType>
