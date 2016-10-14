@@ -115,7 +115,7 @@ void GOSolver<FType>::Solve()
     MakeTrials();
     EstimateOptimums();
     InsertIntervals();
-    if(mParameters.logDeviations && mNumberOfTrials % 500 == 0)
+    if(mParameters.logDeviations && mNumberOfTrials % 1000 == 0)
       CollectStatistics();
     if (mNeeRefillQueue || mQueue.size() < mParameters.numThreads)
       RefillQueue();
