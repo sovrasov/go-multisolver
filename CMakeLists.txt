@@ -6,7 +6,7 @@ project (${PROJECT_NAME_STR})
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   add_definitions(-std=c++11 -Wall -fopenmp)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES MSVC)
+elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   add_definitions(/EHsc /openmp)
 endif()
 
