@@ -20,4 +20,7 @@ file(GLOB SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
                     ${CMAKE_CURRENT_SOURCE_DIR}/src/Grishagin/*.cpp)
 
 add_executable(${PROJECT_NAME_STR} ${SRC_FILES})
-set_target_properties(${PROJECT_NAME_STR} PROPERTIES LINK_FLAGS "-fopenmp")
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+	set_target_properties(${PROJECT_NAME_STR} PROPERTIES LINK_FLAGS "-fopenmp")
+endif()

@@ -46,15 +46,15 @@ struct SolverParameters
   double eps;
   double r;
   unsigned numThreads;
-  unsigned iterationsLimit;
+  unsigned trialsLimit;
   unsigned evloventTightness = 12;
   StopType criterion;
   bool logDeviations;
 
   SolverParameters() {}
   SolverParameters(double _eps, double _r,
-      unsigned _numThreads, unsigned _iterationsLimit, StopType _criterion = StopType::Accuracy) :
-        eps(_eps), r(_r), numThreads(_numThreads), iterationsLimit(_iterationsLimit),
+      unsigned _numThreads, unsigned _trialsLimit, StopType _criterion = StopType::Accuracy) :
+        eps(_eps), r(_r), numThreads(_numThreads), trialsLimit(_trialsLimit),
         criterion(_criterion)
   {}
 };
@@ -110,9 +110,9 @@ void GOSolver<FType>::Solve()
   bool needStop = false;
   InitDataStructures();
   FirstIteration();
+  MakeTrials();
 
   do {
-    MakeTrials();
     EstimateOptimums();
     InsertIntervals();
     if(mParameters.logDeviations && mNumberOfTrials % 1000 == 0)
@@ -120,12 +120,11 @@ void GOSolver<FType>::Solve()
     if (mNeeRefillQueue || mQueue.size() < mParameters.numThreads)
       RefillQueue();
     CalculateNextPoints();
+    MakeTrials();
     needStop = CheckStopCondition();
     mIterationsCounter++;
-  } while(mIterationsCounter < mParameters.iterationsLimit && !needStop);
+  } while(mNumberOfTrials < mParameters.trialsLimit && !needStop);
 
-  MakeTrials();
-  EstimateOptimums();
   if(mParameters.logDeviations)
     CollectStatistics();
 
@@ -173,7 +172,7 @@ bool GOSolver<FType>::CheckStopCondition()
     }
       break;
     case StopType::OptimalValue:
-      isOptimumReached = mOptimumEstimations[mNextIntervals[i]->problemIdx].z -
+      isOptimumReached = mNextPoints[i].z -
         mProblems.GetOptimalValue(mNextIntervals[i]->problemIdx) < mParameters.eps;
     }
 
@@ -181,9 +180,31 @@ bool GOSolver<FType>::CheckStopCondition()
     {
       mActiveProblemsMask[mNextIntervals[i]->problemIdx] = false;
       mNumberOfActiveProblems--;
+
+      mOptimumEstimations[mNextIntervals[i]->problemIdx] = mNextPoints[i];
+      //TODO: use all search data to estimate optimum
+      /*
+      double optimum[solverMaxDim];
+      mProblems.GetOptimumCoordinates(optimum, mNextIntervals[i]->problemIdx);
       std::cout << "Problem # " << mNextIntervals[i]->problemIdx + 1 <<
         " has been solved! Trials performed: " << mNumberOfTrials <<
-        " Problems left: " << mNumberOfActiveProblems << "\n";
+        " Problems left: " << mNumberOfActiveProblems << " coordinates diff: " <<
+        solver_internal::vectorsMaxDiff(
+          optimum, mNextPoints[i].y, mProblems.GetDimension()) << " Values diff: " <<
+        mNextPoints[i].z - mProblems.GetOptimalValue(mNextIntervals[i]->problemIdx) << "\n";
+       */
+
+      if (mNumberOfActiveProblems)
+      {
+        RefillQueue();
+        mNextIntervals[i] = mQueue.top();
+        mQueue.pop();
+        mNextPoints[i].x = 0.5 * (mNextIntervals[i]->xl + mNextIntervals[i]->xr) -
+          (((mNextIntervals[i]->zr - mNextIntervals[i]->zl) > 0.) ? 1. : -1.) *
+          pow(fabs(mNextIntervals[i]->zr - mNextIntervals[i]->zl) /
+            mHEstimations[mNextIntervals[i]->problemIdx], mProblems.GetDimension()) / 2. / mParameters.r;
+        mEvolvent.GetImage(mNextPoints[i].x, mNextPoints[i].y);
+      }
     }
   }
 
@@ -314,6 +335,8 @@ void GOSolver<FType>::MakeTrials()
   for(int i = 0; i < (int)mParameters.numThreads; i++)
   {
     mNextPoints[i].z = mProblems.CalculateObjective(mNextPoints[i].y, mNextIntervals[i]->problemIdx);
+    if (mNextPoints[i].x < mNextIntervals[i]->xl || mNextPoints[i].x > mNextIntervals[i]->xr)
+      throw std::runtime_error("");
   }
 }
 

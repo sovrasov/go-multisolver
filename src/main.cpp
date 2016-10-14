@@ -66,8 +66,8 @@ int main(int argc, char** argv)
 
    fout.close();
   }
-  //for(size_t i = 0; i < optimumEstimations.size(); i++)
-  //  std::cout << "Optimum value in problem #" << i + 1 << ": " << optimumEstimations[i].z << "\n";
+//  for(size_t i = 0; i < optimumEstimations.size(); i++)
+//    std::cout << "Optimum value in problem #" << i + 1 << ": " << optimumEstimations[i].z << "\n";
 
   std::cout << "Number of trials: " << solver.GetTrialsNumber()
     << "\nNumber of iterations: " << solver.GetIterationsNumber() << "\n";
