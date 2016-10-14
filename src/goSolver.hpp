@@ -90,6 +90,7 @@ protected:
   void RefillQueue();
   void CalculateNextPoints();
   bool CheckStopCondition();
+  void CollectStatistics();
 
 public:
 
@@ -99,7 +100,7 @@ public:
   std::vector<Trial> GetOptimumEstimations();
   unsigned GetTrialsNumber() const { return mNumberOfTrials; }
   unsigned GetIterationsNumber() const { return mIterationsCounter; }
-  std::vector<double> GetStatistics() const { return mStatiscics; }
+  std::vector<StatPoint> GetStatistics() const { return mStatiscics; }
 };
 
 template <class FType>
@@ -113,6 +114,8 @@ void GOSolver<FType>::Solve()
     MakeTrials();
     InsertIntervals();
     EstimateOptimums();
+    if(mNumberOfTrials % 500 == 0)
+      CollectStatistics();
     if (mNeeRefillQueue || mQueue.size() < mParameters.numThreads)
       RefillQueue();
     CalculateNextPoints();
@@ -120,8 +123,43 @@ void GOSolver<FType>::Solve()
     mIterationsCounter++;
   } while(mIterationsCounter < mParameters.iterationsLimit && !needStop);
 
+  MakeTrials();
+  InsertIntervals();
+  EstimateOptimums();
+  CollectStatistics();
+
   ClearDataStructures();
 }
+
+template <class FType>
+void GOSolver<FType>::CollectStatistics()
+{
+  if (mParameters.logDeviations)
+  {
+    StatPoint currentDevs(mNumberOfTrials, 0., 0.);
+    for (size_t j = 0; j < mProblems.Size(); j++)
+    {
+      double optPoint[solverMaxDim];
+      mProblems.GetOptimumCoordinates(optPoint, j);
+      double difference = solver_internal::vectorsMaxDiff(optPoint, mOptimumEstimations[j].y, mProblems.GetDimension());
+      if (mSearchInformations[j].size() == 1)
+        difference = 2.;
+      currentDevs.meanDev += difference;
+      //currentDevs.maxDev = fmax(currentDevs.maxDev, difference);
+      if (difference > currentDevs.maxDev)
+      {
+        currentDevs.maxDev = difference;
+        if (mNumberOfTrials > 35000)
+          std::cout << "Max dev at the task " << j << " = " << currentDevs.maxDev << " value: "
+          << mProblems.CalculateObjective(mOptimumEstimations[j].y, j) << "\n";
+      }
+    }
+    currentDevs.meanDev /= mProblems.Size();
+
+    mStatiscics.push_back(currentDevs);
+  }
+}
+
 
 template <class FType>
 bool GOSolver<FType>::CheckStopCondition()
@@ -129,40 +167,31 @@ bool GOSolver<FType>::CheckStopCondition()
   bool needStop = false;
   for (size_t i = 0; i < mParameters.numThreads; i++)
   {
+    bool isOptimumReached = false;
     switch (mParameters.criterion)
     {
     case StopType::Accuracy:
-      if (mNextIntervals[i]->delta < mParameters.eps)
-      {
-        mActiveProblemsMask[mNextIntervals[i]->problemIdx] = false;
-        mNumberOfActiveProblems--;
-      }
+      isOptimumReached = mNextIntervals[i]->delta < mParameters.eps;
       break;
     case StopType::OptimumVicinity:
     {
       double optimum[solverMaxDim];
       mProblems.GetOptimumCoordinates(optimum, mNextIntervals[i]->problemIdx);
-      bool optimumReached = !solver_internal::checkVectorsDiff(
+      isOptimumReached = !solver_internal::checkVectorsDiff(
         optimum, mNextPoints[i].y, mProblems.GetDimension(), mParameters.eps);
-      if(optimumReached)
-      {
-        mActiveProblemsMask[mNextIntervals[i]->problemIdx] = false;
-        mNumberOfActiveProblems--;
-        std::cout << "Problem # " << mNextIntervals[i]->problemIdx + 1 << " of " <<
-          mNumberOfActiveProblems + 1 <<" has been solved!\n";
-      }
     }
       break;
     case StopType::OptimalValue:
-    {
-      double optValue = mProblems.GetOptimalValue(mNextIntervals[i]->problemIdx);
-      if(mOptimumEstimations[mNextIntervals[i]->problemIdx].z - optValue < mParameters.eps)
-      {
-        mActiveProblemsMask[mNextIntervals[i]->problemIdx] = false;
-        mNumberOfActiveProblems--;
-      }
+      isOptimumReached = mOptimumEstimations[mNextIntervals[i]->problemIdx].z -
+        mProblems.GetOptimalValue(mNextIntervals[i]->problemIdx) < mParameters.eps;
     }
-      break;
+
+    if (mNextIntervals[i]->delta < mParameters.eps)
+    {
+      mActiveProblemsMask[mNextIntervals[i]->problemIdx] = false;
+      mNumberOfActiveProblems--;
+      std::cout << "Problem # " << mNextIntervals[i]->problemIdx + 1 << " of " <<
+        mNumberOfActiveProblems + 1 << " has been solved!\n";
     }
   }
 
@@ -220,15 +249,6 @@ void GOSolver<FType>::EstimateOptimums()
     {
       mOptimumEstimations[problemIdx] = mNextPoints[i];
       mNeeRefillQueue = true;
-      if (mParameters.logDeviations)
-      {
-        StatPoint currentDevs(mNumberOfTrials, 2., 0.);
-
-        for (size_t i = 0; i < mProblems.Size(); i++)
-        {
-
-        }
-      }
     }
   }
 }

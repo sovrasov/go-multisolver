@@ -14,7 +14,7 @@ int main(int argc, const char** argv)
   for(unsigned i = 0; i < nProblems; i++)
   {
     gkls::GKLSFunction* func = new gkls::GKLSFunction();
-    func->SetFunctionClass(gkls::Simple, 4);
+    func->SetFunctionClass(gkls::Simple, 2);
     func->SetType(gkls::TD);
     func->SetFunctionNumber(i + 1);
     pool.AddProblem(std::shared_ptr<gkls::GKLSFunction>(func));
@@ -22,7 +22,8 @@ int main(int argc, const char** argv)
 
   std::cout << "Problems pool created\n";
 
-  SolverParameters parameters(0.02, 4.7, 4, 5000000, StopType::OptimumVicinity);
+  SolverParameters parameters(0.01, 4.7, 1, 5000000, StopType::OptimalValue);
+  parameters.logDeviations = true;
   GOSolver<gkls::GKLSFunction> solver;
   solver.SetParameters(parameters);
   solver.SetProblemsPool(pool);
@@ -31,7 +32,11 @@ int main(int argc, const char** argv)
   solver.Solve();
   auto end = std::chrono::system_clock::now();
   std::vector<Trial> optimumEstimations = solver.GetOptimumEstimations();
+  std::vector<StatPoint> statistics = solver.GetStatistics();
 
+  for (size_t i = 0; i < statistics.size(); i++)
+    std::cout << "(" << statistics[i].trial << ": " << statistics[i].meanDev << " " <<
+     statistics[i].maxDev << ")\n";
 	//for(size_t i = 0; i < optimumEstimations.size(); i++)
 	//	std::cout << "Optimum value in problem #" << i + 1 << ": " << optimumEstimations[i].z << "\n";
 
