@@ -34,7 +34,7 @@ int main(int argc, char** argv)
     func->SetFunctionClass(gkls::Simple, parser.get<int>("dimension"));
     func->SetType(gkls::TD);
     func->SetFunctionNumber(i + 1);
-    pool.AddProblem(std::shared_ptr<gkls::GKLSFunction>(func));
+    pool.Add(std::shared_ptr<gkls::GKLSFunction>(func));
   }
 
   std::cout << "Problems pool created\n";

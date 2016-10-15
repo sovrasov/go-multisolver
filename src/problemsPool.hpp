@@ -13,14 +13,9 @@ protected:
 
 public:
 
-  void AddProblem(std::shared_ptr<FType> problem)
+  void Add(std::shared_ptr<FType> problem)
   {
     mProblems.push_back(problem);
-  }
-
-  void DeleteProblem(unsigned problemIndex)
-  {
-    mProblems.erase(mProblems.begin() + problemIndex);
   }
 
   void GetBounds(double* lb, double* ub)
@@ -29,7 +24,7 @@ public:
       mProblems[0]->GetDomainBounds(lb, ub);
   }
 
-  unsigned Size() const
+  unsigned GetSize() const
   {
     return mProblems.size();
   }
