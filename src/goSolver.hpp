@@ -92,6 +92,7 @@ protected:
   void CalculateNextPoints();
   bool CheckStopCondition();
   void CollectStatistics();
+  double GetNextPointCoordinate(const Interval*) const;
 
 public:
 
@@ -103,6 +104,14 @@ public:
   unsigned GetIterationsNumber() const { return mIterationsCounter; }
   std::vector<StatPoint> GetStatistics() const { return mStatiscics; }
 };
+
+template <class FType>
+double GOSolver<FType>::GetNextPointCoordinate(const Interval* i) const
+{
+  return 0.5 * (i->xl + i->xr) -
+    (((i->zr - i->zl) > 0.) ? 1. : -1.) * pow(fabs(i->zr - i->zl) /
+      mHEstimations[i->problemIdx], mProblems.GetDimension()) / 2. / mParameters.r;
+}
 
 template <class FType>
 void GOSolver<FType>::Solve()
@@ -135,21 +144,27 @@ template <class FType>
 void GOSolver<FType>::CollectStatistics()
 {
   StatPoint currentDevs(mNumberOfTrials, 0., 0.);
-  for (size_t j = 0; j < mProblems.Size(); j++)
+  for (size_t j = 0; j < mProblems.GetSize(); j++)
   {
-    double optPoint[solverMaxDim];
-    mProblems.GetOptimumCoordinates(optPoint, j);
-    double difference = solver_internal::vectorsMaxDiff(optPoint, mOptimumEstimations[j].y, mProblems.GetDimension());
+    double difference;
+    if (mParameters.criterion != StopType::OptimalValue)
+    {
+      double optPoint[solverMaxDim];
+      mProblems.GetOptimumCoordinates(optPoint, j);
+      difference = solver_internal::vectorsMaxDiff(
+        optPoint, mOptimumEstimations[j].y, mProblems.GetDimension());
+    }
+    else
+      difference = mOptimumEstimations[j].z - mProblems.GetOptimalValue(j);
     //if (mSearchInformations[j].size() == 1)
       //difference = ;
     currentDevs.meanDev += difference;
     currentDevs.maxDev = fmax(currentDevs.maxDev, difference);
   }
-  currentDevs.meanDev /= mProblems.Size();
+  currentDevs.meanDev /= mProblems.GetSize();
 
   mStatiscics.push_back(currentDevs);
 }
-
 
 template <class FType>
 bool GOSolver<FType>::CheckStopCondition()
@@ -199,10 +214,7 @@ bool GOSolver<FType>::CheckStopCondition()
         RefillQueue();
         mNextIntervals[i] = mQueue.top();
         mQueue.pop();
-        mNextPoints[i].x = 0.5 * (mNextIntervals[i]->xl + mNextIntervals[i]->xr) -
-          (((mNextIntervals[i]->zr - mNextIntervals[i]->zl) > 0.) ? 1. : -1.) *
-          pow(fabs(mNextIntervals[i]->zr - mNextIntervals[i]->zl) /
-            mHEstimations[mNextIntervals[i]->problemIdx], mProblems.GetDimension()) / 2. / mParameters.r;
+        mNextPoints[i].x = GetNextPointCoordinate(mNextIntervals[i]);
         mEvolvent.GetImage(mNextPoints[i].x, mNextPoints[i].y);
       }
     }
@@ -221,10 +233,7 @@ void GOSolver<FType>::CalculateNextPoints()
   {
     mNextIntervals[i] = mQueue.top();
     mQueue.pop();
-    mNextPoints[i].x = 0.5 * (mNextIntervals[i]->xl + mNextIntervals[i]->xr) -
-        (((mNextIntervals[i]->zr - mNextIntervals[i]->zl) > 0.) ? 1. : -1.) *
-        pow(fabs(mNextIntervals[i]->zr - mNextIntervals[i]->zl) /
-        mHEstimations[mNextIntervals[i]->problemIdx], mProblems.GetDimension()) / 2. / mParameters.r;
+    mNextPoints[i].x = GetNextPointCoordinate(mNextIntervals[i]);
 
     if (mNextPoints[i].x > mNextIntervals[i]->xr || mNextPoints[i].x < mNextIntervals[i]->xl)
       throw std::runtime_error("The next point is outside of the subdivided interval");
@@ -238,7 +247,7 @@ void GOSolver<FType>::RefillQueue()
 {
   mQueue = solver_internal::PriorityQueue();
 
-  for(size_t i = 0; i < mProblems.Size(); i++)
+  for(size_t i = 0; i < mProblems.GetSize(); i++)
     if(mActiveProblemsMask[i])
     {
       for(auto it = mSearchInformations[i].begin(); it != mSearchInformations[i].end(); ++it)
@@ -296,7 +305,6 @@ void GOSolver<FType>::InsertIntervals()
 {
   for(size_t i = 0; i < mParameters.numThreads; i++)
   {
-    //create new interval
     Interval* pNewInterval = new Interval(mNextPoints[i].x, mNextIntervals[i]->xr);
     pNewInterval->zl = mNextPoints[i].z;
     pNewInterval->zr = mNextIntervals[i]->zr;
@@ -308,7 +316,6 @@ void GOSolver<FType>::InsertIntervals()
     if(!wasInserted)
       throw std::runtime_error("Error during interval insertion.");
 
-    //update old interval
     mNextIntervals[i]->xr = mNextPoints[i].x;
     mNextIntervals[i]->zr = mNextPoints[i].z;
     mNextIntervals[i]->delta = pow(mNextIntervals[i]->xr - mNextIntervals[i]->xl,
@@ -347,23 +354,24 @@ void GOSolver<FType>::InitDataStructures()
   mProblems.GetBounds(leftDomainBound, rightDomainBound);
   mEvolvent = Evolvent(mProblems.GetDimension(), mParameters.evloventTightness,
     leftDomainBound, rightDomainBound);
+
   mQueue = solver_internal::PriorityQueue();
   mNextPoints.resize(mParameters.numThreads);
   mNextIntervals.resize(mParameters.numThreads);
-  mActiveProblemsMask.resize(mProblems.Size());
-  mSearchInformations.resize(mProblems.Size());
+  mActiveProblemsMask.resize(mProblems.GetSize());
+  mSearchInformations.resize(mProblems.GetSize());
   mStatiscics.resize(0);
   std::fill(mActiveProblemsMask.begin(), mActiveProblemsMask.end(), true);
-  mHEstimations.resize(mProblems.Size());
+  mHEstimations.resize(mProblems.GetSize());
   std::fill(mHEstimations.begin(), mHEstimations.end(), 1.0);
-  mOptimumEstimations.resize(mProblems.Size());
+  mOptimumEstimations.resize(mProblems.GetSize());
   std::fill(mOptimumEstimations.begin(), mOptimumEstimations.end(), Trial(0., HUGE_VAL));
 }
 
 template <class FType>
 void GOSolver<FType>::ClearDataStructures()
 {
-  for (size_t i = 0; i < mProblems.Size(); i++)
+  for (size_t i = 0; i < mProblems.GetSize(); i++)
   {
     for(auto it = mSearchInformations[i].begin(); it != mSearchInformations[i].end(); ++it)
       delete *it;
@@ -375,7 +383,7 @@ void GOSolver<FType>::ClearDataStructures()
 template <class FType>
 void GOSolver<FType>::FirstIteration()
 {
-  for (size_t i = 0; i < mProblems.Size(); i++)
+  for (size_t i = 0; i < mProblems.GetSize(); i++)
   {
     Interval* pFirstInterval = new Interval(0., 1.);
     pFirstInterval->delta = 1.;
@@ -398,8 +406,8 @@ void GOSolver<FType>::FirstIteration()
 
   mIterationsCounter = 1;
   mNeeRefillQueue = true;
-  mNumberOfActiveProblems = mProblems.Size();
-  mNumberOfTrials = mProblems.Size() * 2;
+  mNumberOfActiveProblems = mProblems.GetSize();
+  mNumberOfTrials = mProblems.GetSize() * 2;
 }
 
 template <class FType>
