@@ -342,8 +342,6 @@ void GOSolver<FType>::MakeTrials()
   for(int i = 0; i < (int)mParameters.numThreads; i++)
   {
     mNextPoints[i].z = mProblems.CalculateObjective(mNextPoints[i].y, mNextIntervals[i]->problemIdx);
-    if (mNextPoints[i].x < mNextIntervals[i]->xl || mNextPoints[i].x > mNextIntervals[i]->xr)
-      throw std::runtime_error("");
   }
 }
 

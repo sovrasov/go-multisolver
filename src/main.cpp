@@ -25,8 +25,8 @@ int main(int argc, char** argv)
     "save statistics of deviations");
   parser.add<std::string>("statFile", 'f', "name of the file to write statistics",
     false, "statistics.csv");
-  parser.add<std::string>("runMode", 'm', "",
-    false, "multi", cmdline::oneof(std::string("multi"), std::string("synch"), std::string("asynch")));
+  parser.add<std::string>("runMode", 'm', "", false, "multi", cmdline::oneof(
+    std::string("multi"), std::string("synch"), std::string("asynch")));
   parser.add("hard", 'h', "determines type of GKLS functions");
   parser.parse_check(argc, argv);
 
@@ -71,7 +71,25 @@ int main(int argc, char** argv)
   {
     parameters.numThreads = 1;
     StatPoint lastStatistics(0, 2., 2.);
-#pragma omp parallel for num_threads(parameters.numThreads), schedule(dynamic)
+
+#if defined _MSC_VER
+
+    if(parser.get<std::string>("runMode") == std::string("asynch"))
+    {
+      std::cerr << "asynch mode is disabled on current platform\n";
+      return 0;
+    }
+
+#pragma omp parallel for num_threads(parser.get<int>("threadsNum")), schedule(static, 1)
+#else
+
+    if(parser.get<std::string>("runMode") == std::string("synch"))
+      omp_set_schedule(omp_sched_static, 1);
+    else if(parser.get<std::string>("runMode") == std::string("asynch"))
+      omp_set_schedule(omp_sched_dynamic, 1);
+
+#pragma omp parallel for num_threads(parser.get<int>("threadsNum")), schedule(runtime)
+#endif
     for (int i = 0; i < (int)nProblems; i++)
     {
       ProblemsPool<gkls::GKLSFunction> pool;
@@ -86,9 +104,6 @@ int main(int argc, char** argv)
       solver.SetProblemsPool(pool);
       solver.Solve();
 
-      StatPoint nextDeviation;
-      nextDeviation.trial = solver.GetTrialsNumber() + lastStatistics.trial;
-
       double optPoint[solverMaxDim];
       func->GetOptimumCoordinates(optPoint);
       double currentDev = solver_internal::vectorsMaxDiff(optPoint,
@@ -96,22 +111,28 @@ int main(int argc, char** argv)
 
 #pragma omp critical
       {
-        nextDeviation.maxDev = std::max(lastStatistics.maxDev, currentDev);
+        StatPoint nextDeviation;
+        nextDeviation.trial = solver.GetTrialsNumber() + lastStatistics.trial;
+        if(statistics.size() != nProblems - 1)
+          nextDeviation.maxDev = std::max(lastStatistics.maxDev, currentDev);
+        else
+          nextDeviation.maxDev = currentDev;
         nextDeviation.meanDev = lastStatistics.meanDev + (-2. + currentDev) / 100.;
 
         statistics.push_back(nextDeviation);
         lastStatistics = nextDeviation;
-        std::cout << "Problem # " << i + 1 << " solved. Trials performed: " << solver.GetTrialsNumber() <<
+        std::cout << "Problem # " << i + 1 <<
+          " solved. Trials performed: " << solver.GetTrialsNumber() <<
           " Dev: " << nextDeviation.meanDev << "\n";
       }
     }
+    std::cout << "Trials performed: " << lastStatistics.trial << "\n";
   }
   auto end = std::chrono::system_clock::now();
   std::chrono::duration<double> elapsed_seconds = end - start;
   std::cout << "Time elapsed: " << elapsed_seconds.count() << "s\n";
 
-
-  if(parameters.logDeviations)
+  if(parser.exist("saveStatistics"))
   {
     std::ofstream fout;
     fout.open(parser.get<std::string>("statFile"), std::ios_base::out);
