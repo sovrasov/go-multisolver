@@ -386,13 +386,23 @@ void GOSolver<FType>::FirstIteration()
     Interval* pFirstInterval = new Interval(0., 1.);
     pFirstInterval->delta = 1.;
     pFirstInterval->problemIdx = i;
-    double y[solverMaxDim];
-    mEvolvent.GetImage(pFirstInterval->xl, y);
-    pFirstInterval->zl = mProblems.CalculateObjective(y, i);
-    mEvolvent.GetImage(pFirstInterval->xr, y);
-    pFirstInterval->zr = mProblems.CalculateObjective(y, i);
+    double yl[solverMaxDim], yr[solverMaxDim];
+    mEvolvent.GetImage(pFirstInterval->xl, yl);
+    pFirstInterval->zl = mProblems.CalculateObjective(yl, i);
+    mEvolvent.GetImage(pFirstInterval->xr, yr);
+    pFirstInterval->zr = mProblems.CalculateObjective(yr, i);
     mSearchInformations[i].insert(pFirstInterval);
     UpdateH(pFirstInterval);
+    if(pFirstInterval->zl < pFirstInterval->zr)
+    {
+      mOptimumEstimations[i] = Trial(pFirstInterval->xl, pFirstInterval->zl);
+      std::copy_n(yl, mProblems.GetDimension(), mOptimumEstimations[i].y);
+    }
+    else
+    {
+      mOptimumEstimations[i] = Trial(pFirstInterval->xr, pFirstInterval->zr);
+      std::copy_n(yr, mProblems.GetDimension(), mOptimumEstimations[i].y);
+    }
 
     if(i < mParameters.numThreads)
     {
