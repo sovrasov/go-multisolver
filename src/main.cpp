@@ -8,6 +8,7 @@
 #include <chrono>
 #include <memory>
 #include <cmdline.h>
+#include <omp.h>
 
 int main(int argc, char** argv)
 {
@@ -25,7 +26,7 @@ int main(int argc, char** argv)
   parser.add<std::string>("statFile", 'f', "name of the file to write statistics",
     false, "statistics.csv");
   parser.add<std::string>("runMode", 'm', "",
-    false, "multi");
+    false, "multi", cmdline::oneof(std::string("multi"), std::string("synch"), std::string("asynch")));
   parser.add("hard", 'h', "determines type of GKLS functions");
   parser.parse_check(argc, argv);
 
@@ -34,12 +35,13 @@ int main(int argc, char** argv)
     parser.get<double>("reliability"),
     parser.get<int>("threadsNum"),
     parser.get<int>("trialsLimit"), StopType::OptimumVicinity);
-  parameters.logDeviations = parser.exist("saveStatistics");
   std::vector<StatPoint> statistics;
   const unsigned nProblems = 100;
 
+  auto start = std::chrono::system_clock::now();
   if (parser.get<std::string>("runMode") == std::string("multi"))
   {
+    parameters.logDeviations = parser.exist("saveStatistics");
     ProblemsPool<gkls::GKLSFunction> pool;
     for (unsigned i = 0; i < nProblems; i++)
     {
@@ -56,23 +58,21 @@ int main(int argc, char** argv)
     solver.SetParameters(parameters);
     solver.SetProblemsPool(pool);
     std::cout << "Solver started\n";
-    auto start = std::chrono::system_clock::now();
     solver.Solve();
-    auto end = std::chrono::system_clock::now();
     std::vector<Trial> optimumEstimations = solver.GetOptimumEstimations();
     statistics = solver.GetStatistics();
 
     std::cout << "Number of trials: " << solver.GetTrialsNumber()
       << "\nNumber of iterations: " << solver.GetIterationsNumber() << "\n";
-
-    std::chrono::duration<double> elapsed_seconds = end - start;
-    std::cout << "Time elapsed: " << elapsed_seconds.count() << "s\n";
     //  for(size_t i = 0; i < optimumEstimations.size(); i++)
     //    std::cout << "Optimum value in problem #" << i + 1 << ": " << optimumEstimations[i].z << "\n";
   }
   else
   {
-    for (unsigned i = 0; i < nProblems; i++)
+    parameters.numThreads = 1;
+    StatPoint lastStatistics(0, 2., 2.);
+#pragma omp parallel for num_threads(parameters.numThreads), schedule(dynamic)
+    for (int i = 0; i < (int)nProblems; i++)
     {
       ProblemsPool<gkls::GKLSFunction> pool;
       gkls::GKLSFunction* func = new gkls::GKLSFunction();
@@ -84,10 +84,32 @@ int main(int argc, char** argv)
       GOSolver<gkls::GKLSFunction> solver;
       solver.SetParameters(parameters);
       solver.SetProblemsPool(pool);
+      solver.Solve();
 
-      //statistics.push_back();
+      StatPoint nextDeviation;
+      nextDeviation.trial = solver.GetTrialsNumber() + lastStatistics.trial;
+
+      double optPoint[solverMaxDim];
+      func->GetOptimumCoordinates(optPoint);
+      double currentDev = solver_internal::vectorsMaxDiff(optPoint,
+        solver.GetOptimumEstimations()[0].y, func->GetDimension());
+
+#pragma omp critical
+      {
+        nextDeviation.maxDev = std::max(lastStatistics.maxDev, currentDev);
+        nextDeviation.meanDev = lastStatistics.meanDev + (-2. + currentDev) / 100.;
+
+        statistics.push_back(nextDeviation);
+        lastStatistics = nextDeviation;
+        std::cout << "Problem # " << i + 1 << " solved. Trials performed: " << solver.GetTrialsNumber() <<
+          " Dev: " << nextDeviation.meanDev << "\n";
+      }
     }
   }
+  auto end = std::chrono::system_clock::now();
+  std::chrono::duration<double> elapsed_seconds = end - start;
+  std::cout << "Time elapsed: " << elapsed_seconds.count() << "s\n";
+
 
   if(parameters.logDeviations)
   {
