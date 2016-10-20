@@ -50,6 +50,7 @@ struct SolverParameters
   unsigned evloventTightness = 12;
   StopType criterion;
   bool logDeviations;
+  bool verbose = false;
 
   SolverParameters() {}
   SolverParameters(double _eps, double _r,
@@ -207,17 +208,18 @@ bool GOSolver<FType>::CheckStopCondition()
       mOptimumEstimations[mNextIntervals[i]->problemIdx] = mNextPoints[i];
       //TODO: use all search data to estimate optimum
 
-      /*
-      double optimum[solverMaxDim];
-      mProblems.GetOptimumCoordinates(optimum, mNextIntervals[i]->problemIdx);
-      std::cout << "Problem # " << mNextIntervals[i]->problemIdx + 1 <<
-        " has been solved! Trials performed: " << mNumberOfTrials <<
-        " Problems left: " << mNumberOfActiveProblems << " coordinates diff: " <<
-        solver_internal::vectorsMaxDiff(
-          optimum, mNextPoints[i].y, mProblems.GetDimension()) << " Values diff: " <<
-        mNextPoints[i].z - mProblems.GetOptimalValue(mNextIntervals[i]->problemIdx) <<
-        " H estimation: " << mHEstimations[mNextIntervals[i]->problemIdx] << "\n";
-        */
+      if (mParameters.verbose)
+      {
+        double optimum[solverMaxDim];
+        mProblems.GetOptimumCoordinates(optimum, mNextIntervals[i]->problemIdx);
+        std::cout << "Problem # " << mNextIntervals[i]->problemIdx + 1 <<
+          " has been solved! Trials performed: " << mNumberOfTrials <<
+          " Problems left: " << mNumberOfActiveProblems << " coordinates diff: " <<
+          solver_internal::vectorsMaxDiff(
+            optimum, mNextPoints[i].y, mProblems.GetDimension()) << " Values diff: " <<
+          mNextPoints[i].z - mProblems.GetOptimalValue(mNextIntervals[i]->problemIdx) <<
+          " H estimation: " << mHEstimations[mNextIntervals[i]->problemIdx] << "\n";
+      }
 
       if (mNumberOfActiveProblems)
         needRenewIntervals = true;
