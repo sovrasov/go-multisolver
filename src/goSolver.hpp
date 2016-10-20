@@ -71,6 +71,7 @@ protected:
   std::vector<Trial> mOptimumEstimations;
   std::vector<Interval*> mNextIntervals;
   std::vector<Trial> mNextPoints;
+  std::vector<double> mMinDifferences;
   std::vector<std::set<Interval*>> mSearchInformations;
   solver_internal::PriorityQueue mQueue;
   std::vector<StatPoint> mStatiscics;
@@ -149,15 +150,16 @@ void GOSolver<FType>::CollectStatistics()
     double difference;
     if (mParameters.criterion != StopType::OptimalValue)
     {
+      /*
       double optPoint[solverMaxDim];
       mProblems.GetOptimumCoordinates(optPoint, j);
       difference = solver_internal::vectorsMaxDiff(
         optPoint, mOptimumEstimations[j].y, mProblems.GetDimension());
+        */
+      difference = mMinDifferences[j];
     }
     else
       difference = mOptimumEstimations[j].z - mProblems.GetOptimalValue(j);
-    //if (mSearchInformations[j].size() == 1)
-      //difference = ;
     currentDevs.meanDev += difference;
     currentDevs.maxDev = fmax(currentDevs.maxDev, difference);
   }
@@ -170,6 +172,7 @@ template <class FType>
 bool GOSolver<FType>::CheckStopCondition()
 {
   bool needStop = false;
+  bool needRenewIntervals = false;
   for (size_t i = 0; i < mParameters.numThreads; i++)
   {
     bool isOptimumReached = false;
@@ -182,8 +185,13 @@ bool GOSolver<FType>::CheckStopCondition()
     {
       double optimum[solverMaxDim];
       mProblems.GetOptimumCoordinates(optimum, mNextIntervals[i]->problemIdx);
-      isOptimumReached = !solver_internal::checkVectorsDiff(
-        optimum, mNextPoints[i].y, mProblems.GetDimension(), mParameters.eps);
+      double optDistance = solver_internal::vectorsMaxDiff(optimum, mNextPoints[i].y,
+        mProblems.GetDimension());
+      isOptimumReached = optDistance < mParameters.eps;
+      mMinDifferences[mNextIntervals[i]->problemIdx] = std::min(optDistance,
+        mMinDifferences[mNextIntervals[i]->problemIdx]);
+      //isOptimumReached = !solver_internal::checkVectorsDiff(
+      //  optimum, mNextPoints[i].y, mProblems.GetDimension(), mParameters.eps);
     }
       break;
     case StopType::OptimalValue:
@@ -198,6 +206,7 @@ bool GOSolver<FType>::CheckStopCondition()
 
       mOptimumEstimations[mNextIntervals[i]->problemIdx] = mNextPoints[i];
       //TODO: use all search data to estimate optimum
+
       /*
       double optimum[solverMaxDim];
       mProblems.GetOptimumCoordinates(optimum, mNextIntervals[i]->problemIdx);
@@ -206,17 +215,17 @@ bool GOSolver<FType>::CheckStopCondition()
         " Problems left: " << mNumberOfActiveProblems << " coordinates diff: " <<
         solver_internal::vectorsMaxDiff(
           optimum, mNextPoints[i].y, mProblems.GetDimension()) << " Values diff: " <<
-        mNextPoints[i].z - mProblems.GetOptimalValue(mNextIntervals[i]->problemIdx) << "\n";
-       */
+        mNextPoints[i].z - mProblems.GetOptimalValue(mNextIntervals[i]->problemIdx) <<
+        " H estimation: " << mHEstimations[mNextIntervals[i]->problemIdx] << "\n";
+        */
 
       if (mNumberOfActiveProblems)
-      {
-        RefillQueue();
-        mNextIntervals[i] = mQueue.top();
-        mQueue.pop();
-        mNextPoints[i].x = GetNextPointCoordinate(mNextIntervals[i]);
-        mEvolvent.GetImage(mNextPoints[i].x, mNextPoints[i].y);
-      }
+        needRenewIntervals = true;
+    }
+    if (needRenewIntervals)
+    {
+      RefillQueue();
+      CalculateNextPoints();
     }
   }
 
@@ -235,7 +244,7 @@ void GOSolver<FType>::CalculateNextPoints()
     mQueue.pop();
     mNextPoints[i].x = GetNextPointCoordinate(mNextIntervals[i]);
 
-    if (mNextPoints[i].x > mNextIntervals[i]->xr || mNextPoints[i].x < mNextIntervals[i]->xl)
+    if (mNextPoints[i].x >= mNextIntervals[i]->xr || mNextPoints[i].x <= mNextIntervals[i]->xl)
       throw std::runtime_error("The next point is outside of the subdivided interval");
 
     mEvolvent.GetImage(mNextPoints[i].x, mNextPoints[i].y);
@@ -364,6 +373,8 @@ void GOSolver<FType>::InitDataStructures()
   std::fill(mHEstimations.begin(), mHEstimations.end(), 1.0);
   mOptimumEstimations.resize(mProblems.GetSize());
   std::fill(mOptimumEstimations.begin(), mOptimumEstimations.end(), Trial(0., HUGE_VAL));
+  mMinDifferences.resize(mProblems.GetSize());
+  std::fill(mMinDifferences.begin(), mMinDifferences.end(), HUGE_VAL);
 }
 
 template <class FType>
