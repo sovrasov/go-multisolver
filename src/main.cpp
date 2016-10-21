@@ -23,6 +23,7 @@ int main(int argc, char** argv)
   parser.add<int>("trialsLimit", 'l', "limit of trials for the method", false, 5000000);
   parser.add("saveStatistics", 's', "determines whether the method will "
     "save statistics of deviations");
+  parser.add("verbose", 'v', "determines whether the method print information messages");
   parser.add<std::string>("statFile", 'f', "name of the file to write statistics",
     false, "statistics.csv");
   parser.add<std::string>("runMode", 'm', "", false, "multi", cmdline::oneof(
@@ -35,6 +36,7 @@ int main(int argc, char** argv)
     parser.get<double>("reliability"),
     parser.get<int>("threadsNum"),
     parser.get<int>("trialsLimit"), StopType::OptimumVicinity);
+  parameters.verbose = parser.exist("verbose");
   std::vector<StatPoint> statistics;
   const unsigned nProblems = 100;
 
