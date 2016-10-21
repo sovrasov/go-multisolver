@@ -51,6 +51,7 @@ struct SolverParameters
   StopType criterion;
   bool logDeviations;
   bool verbose = false;
+  unsigned statisticsUpdateStep = 1000;
 
   SolverParameters() {}
   SolverParameters(double _eps, double _r,
@@ -122,11 +123,14 @@ void GOSolver<FType>::Solve()
   InitDataStructures();
   FirstIteration();
   MakeTrials();
+  if(mParameters.logDeviations)
+    CollectStatistics();
 
   do {
     EstimateOptimums();
     InsertIntervals();
-    if(mParameters.logDeviations && mNumberOfTrials % 1000 == 0)
+    if(mParameters.logDeviations &&
+        mNumberOfTrials % mParameters.statisticsUpdateStep == 0)
       CollectStatistics();
     if (mNeeRefillQueue || mQueue.size() < mParameters.numThreads)
       RefillQueue();
@@ -224,11 +228,12 @@ bool GOSolver<FType>::CheckStopCondition()
       if (mNumberOfActiveProblems)
         needRenewIntervals = true;
     }
-    if (needRenewIntervals)
-    {
-      RefillQueue();
-      CalculateNextPoints();
-    }
+  }
+
+  if (needRenewIntervals)
+  {
+    RefillQueue();
+    CalculateNextPoints();
   }
 
   if (mNumberOfActiveProblems == 0)
@@ -376,7 +381,8 @@ void GOSolver<FType>::InitDataStructures()
   mOptimumEstimations.resize(mProblems.GetSize());
   std::fill(mOptimumEstimations.begin(), mOptimumEstimations.end(), Trial(0., HUGE_VAL));
   mMinDifferences.resize(mProblems.GetSize());
-  std::fill(mMinDifferences.begin(), mMinDifferences.end(), HUGE_VAL);
+  std::fill(mMinDifferences.begin(), mMinDifferences.end(), solver_internal::
+    vectorsMaxDiff(leftDomainBound, rightDomainBound, mProblems.GetDimension()));
 }
 
 template <class FType>
