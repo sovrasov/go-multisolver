@@ -15,8 +15,10 @@ int main(int argc, char** argv)
   cmdline::parser parser;
   parser.add<int>("dimension", 'd', "dimension of test problems class", false, 2,
      cmdline::range(1, 5));
-  parser.add<int>("threadsNum", 't', "number of threads in parallel method", false, 1,
+  parser.add<int>("threadsNum", 'p', "number of threads in parallel method", false, 1,
      cmdline::range(1, 32));
+  parser.add<int>("evolventTightness", 't', "", false, 12,
+        cmdline::range(9, 16));
   parser.add<double>("reliability", 'r', "reliability parameter for the method",
     false, 4.5, cmdline::range(1., 1000.));
   parser.add<double>("accuracy", 'e', "accuracy of the method", false, 0.01);
@@ -37,6 +39,7 @@ int main(int argc, char** argv)
     parser.get<int>("threadsNum"),
     parser.get<int>("trialsLimit"), StopType::OptimumVicinity);
   parameters.verbose = parser.exist("verbose");
+  parameters.evloventTightness = parser.get<int>("evolventTightness");
   std::vector<StatPoint> statistics;
   const unsigned nProblems = 100;
 
