@@ -13,9 +13,11 @@
   T Get ## N() const;     \
   void Set ## N(T value);
 
+#include "problem_interface.hpp"
+
 namespace vagrish
 {
-  class GrishaginFunction
+  class GrishaginFunction : public IGOPRoblem
   {
   private:
     int mFunctionNumber;
@@ -35,10 +37,10 @@ namespace vagrish
     double CalculateXDerivative(const double* y) const;
     double CalculateYDerivative(const double* y) const;
 
-    void GetOptimumCoordinates(double* y) const;
+    int GetOptimumCoordinates(double* y) const;
     double GetOptimalValue() const;
     void GetDomainBounds(double* lb, double* ub) const;
-    int GetDimension() const;
+    unsigned GetDimension() const;
   };
 }
 #endif

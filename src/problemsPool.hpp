@@ -18,10 +18,9 @@ public:
     mProblems.push_back(problem);
   }
 
-  void GetBounds(double* lb, double* ub)
+  void GetBounds(double* lb, double* ub, unsigned problemIndex)
   {
-    if (mProblems.size() > 0)
-      mProblems[0]->GetDomainBounds(lb, ub);
+    mProblems[problemIndex]->GetDomainBounds(lb, ub);
   }
 
   unsigned GetSize() const
@@ -29,12 +28,9 @@ public:
     return mProblems.size();
   }
 
-  unsigned GetDimension() const
+  unsigned GetDimension(unsigned problemIndex = 0) const
   {
-    if(mProblems.size() > 0)
-      return mProblems[0]->GetDimension();
-    else
-      return 0;
+    return mProblems[problemIndex]->GetDimension();
   }
 
   double CalculateObjective(const double* y, unsigned problemIndex)

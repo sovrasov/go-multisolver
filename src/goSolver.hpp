@@ -75,6 +75,8 @@ protected:
   std::vector<Trial> mNextPoints;
   std::vector<double> mMinDifferences;
   std::vector<std::set<Interval*>> mSearchInformations;
+  std::vector<std::vector<double>> mLowerDomainBounds;
+  std::vector<std::vector<double>> mUpperDomainBounds;
   solver_internal::PriorityQueue mQueue;
   std::vector<StatPoint> mStatiscics;
   Evolvent mEvolvent;
@@ -246,7 +248,9 @@ void GOSolver<FType>::CalculateNextPoints()
     if (mNextPoints[i].x >= mNextIntervals[i]->xr || mNextPoints[i].x <= mNextIntervals[i]->xl)
       throw std::runtime_error("The next point is outside of the subdivided interval");
 
-    mEvolvent.GetImage(mNextPoints[i].x, mNextPoints[i].y);
+    mEvolvent.GetImage(mNextPoints[i].x, mNextPoints[i].y,
+      mLowerDomainBounds[mNextIntervals[i]->problemIdx].data(),
+      mUpperDomainBounds[mNextIntervals[i]->problemIdx].data());
   }
 }
 
@@ -357,15 +361,16 @@ template <class FType>
 void GOSolver<FType>::InitDataStructures()
 {
   double leftDomainBound[solverMaxDim], rightDomainBound[solverMaxDim];
-  mProblems.GetBounds(leftDomainBound, rightDomainBound);
-  mEvolvent = Evolvent(mProblems.GetDimension(), mParameters.evloventTightness,
-    leftDomainBound, rightDomainBound);
+  mProblems.GetBounds(leftDomainBound, rightDomainBound, 0);
+  mEvolvent = Evolvent(mProblems.GetDimension(), mParameters.evloventTightness);
 
   mQueue = solver_internal::PriorityQueue();
   mNextPoints.resize(mParameters.numThreads);
   mNextIntervals.resize(mParameters.numThreads);
   mActiveProblemsMask.resize(mProblems.GetSize());
   mSearchInformations.resize(mProblems.GetSize());
+  mLowerDomainBounds.resize(mProblems.GetSize());
+  mUpperDomainBounds.resize(mProblems.GetSize());
   mStatiscics.resize(0);
   std::fill(mActiveProblemsMask.begin(), mActiveProblemsMask.end(), true);
   mHEstimations.resize(mProblems.GetSize());
@@ -394,13 +399,17 @@ void GOSolver<FType>::FirstIteration()
 {
   for (size_t i = 0; i < mProblems.GetSize(); i++)
   {
+    mLowerDomainBounds[i].resize(mProblems.GetDimension());
+    mUpperDomainBounds[i].resize(mProblems.GetDimension());
+    mProblems.GetBounds(mLowerDomainBounds[i].data(), mUpperDomainBounds[i].data(), i);
+
     Interval* pFirstInterval = new Interval(0., 1.);
     pFirstInterval->delta = 1.;
     pFirstInterval->problemIdx = i;
     double yl[solverMaxDim], yr[solverMaxDim];
-    mEvolvent.GetImage(pFirstInterval->xl, yl);
+    mEvolvent.GetImage(pFirstInterval->xl, yl, mLowerDomainBounds[i].data(), mUpperDomainBounds[i].data());
     pFirstInterval->zl = mProblems.CalculateObjective(yl, i);
-    mEvolvent.GetImage(pFirstInterval->xr, yr);
+    mEvolvent.GetImage(pFirstInterval->xr, yr, mLowerDomainBounds[i].data(), mUpperDomainBounds[i].data());
     pFirstInterval->zr = mProblems.CalculateObjective(yr, i);
     mSearchInformations[i].insert(pFirstInterval);
     UpdateH(pFirstInterval);

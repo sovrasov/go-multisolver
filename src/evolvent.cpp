@@ -16,7 +16,7 @@ Evolvent::~Evolvent()
 {
 }
 
-Evolvent::Evolvent(int dimension, int tightness, double* lb, double* ub, MapType type)
+Evolvent::Evolvent(int dimension, int tightness, MapType type)
 {
   assert(dimension > 1);
   assert(tightness > 2);
@@ -24,14 +24,6 @@ Evolvent::Evolvent(int dimension, int tightness, double* lb, double* ub, MapType
   mDimension = dimension;
   mTightness = tightness;
   mMapType = type;
-
-  mShiftScalars.resize(mDimension);
-  mRho = 0.;
-  for (int i = 0; i < mDimension; i++)
-  {
-    mRho = fmax(mRho, ub[i] - lb[i]);
-    mShiftScalars[i] = 0.5*(lb[i] + ub[i]);
-  }
 
   switch (mMapType)
   {
@@ -52,9 +44,13 @@ Evolvent::Evolvent(int dimension, int tightness, double* lb, double* ub, MapType
 void Evolvent::GetImage(double x, double y[])
 {
   mapd(x, mTightness, y, mDimension, mMapKey);
+}
 
-  for (int i = 0; i < mDimension; i++)
-    y[i] = mRho*y[i] + mShiftScalars[i];
+void Evolvent::GetImage(double x, double y[], double lb[], double ub[])
+{
+  mapd(x, mTightness, y, mDimension, mMapKey);
+  for(int i = 0; i < mDimension; i++)
+    y[i] = (ub[i] - lb[i])*y[i] + 0.5*(ub[i] + lb[i]);
 }
 
 int Evolvent::GetAllPreimages(double * p, double xp[])

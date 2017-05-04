@@ -47,19 +47,28 @@ int main(int argc, char** argv)
   if (parser.get<std::string>("runMode") == std::string("multi"))
   {
     parameters.logDeviations = parser.exist("saveStatistics");
-    ProblemsPool<gkls::GKLSFunction> pool;
+    ProblemsPool<IGOPRoblem> pool;
     for (unsigned i = 0; i < nProblems; i++)
     {
-      gkls::GKLSFunction* func = new gkls::GKLSFunction();
-      func->SetFunctionClass(problemsClass, parser.get<int>("dimension"));
-      func->SetType(gkls::TD);
-      func->SetFunctionNumber(i + 1);
-      pool.Add(std::shared_ptr<gkls::GKLSFunction>(func));
+      if(i % 2 == 0)
+      {
+        gkls::GKLSFunction* func = new gkls::GKLSFunction();
+        func->SetFunctionClass(problemsClass, parser.get<int>("dimension"));
+        func->SetType(gkls::TD);
+        func->SetFunctionNumber(i + 1);
+        pool.Add(std::shared_ptr<IGOPRoblem>(func));
+      }
+      else
+      {
+        vagrish::GrishaginFunction* func = new vagrish::GrishaginFunction();
+        func->SetFunctionNumber(i + 1);
+        pool.Add(std::shared_ptr<IGOPRoblem>(func));
+      }
     }
 
     std::cout << "Problems pool created\n";
 
-    GOSolver<gkls::GKLSFunction> solver;
+    GOSolver<IGOPRoblem> solver;
     solver.SetParameters(parameters);
     solver.SetProblemsPool(pool);
     std::cout << "Solver started\n";
@@ -97,14 +106,26 @@ int main(int argc, char** argv)
 #endif
     for (int i = 0; i < (int)nProblems; i++)
     {
-      ProblemsPool<gkls::GKLSFunction> pool;
-      gkls::GKLSFunction* func = new gkls::GKLSFunction();
-      func->SetFunctionClass(problemsClass, parser.get<int>("dimension"));
-      func->SetType(gkls::TD);
-      func->SetFunctionNumber(i + 1);
-      pool.Add(std::shared_ptr<gkls::GKLSFunction>(func));
+      ProblemsPool<IGOPRoblem> pool;
+      IGOPRoblem* func;
+      if(i % 2 == 0)
+      {
+        gkls::GKLSFunction* funcPtr = new gkls::GKLSFunction();
+        funcPtr->SetFunctionClass(problemsClass, parser.get<int>("dimension"));
+        funcPtr->SetType(gkls::TD);
+        funcPtr->SetFunctionNumber(i + 1);
+        pool.Add(std::shared_ptr<IGOPRoblem>(funcPtr));
+        func = funcPtr;
+      }
+      else
+      {
+        vagrish::GrishaginFunction* funcPtr = new vagrish::GrishaginFunction();
+        funcPtr->SetFunctionNumber(i + 1);
+        pool.Add(std::shared_ptr<IGOPRoblem>(funcPtr));
+        func = funcPtr;
+      }
 
-      GOSolver<gkls::GKLSFunction> solver;
+      GOSolver<IGOPRoblem> solver;
       solver.SetParameters(parameters);
       solver.SetProblemsPool(pool);
       solver.Solve();
