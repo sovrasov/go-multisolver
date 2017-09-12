@@ -169,10 +169,11 @@ int GrishaginFunction::GetFunctionNumber() const
   return mFunctionNumber;
 }
 
-void GrishaginFunction::GetOptimumCoordinates(double *y) const
+int GrishaginFunction::GetOptimumCoordinates(double *y) const
 {
   y[0] = rand_minimums[2 * (mFunctionNumber - 1)];
   y[1] = rand_minimums[2 * (mFunctionNumber - 1) + 1];
+  return 0;
 }
 
 double GrishaginFunction::GetOptimalValue() const
@@ -188,7 +189,7 @@ void GrishaginFunction::GetDomainBounds(double* lb, double* ub) const
   ub[0] = ub[1] = 1.;
 }
 
-int GrishaginFunction::GetDimension() const
+unsigned GrishaginFunction::GetDimension() const
 {
   return 2;
 }

@@ -13,33 +13,24 @@ protected:
 
 public:
 
-  void AddProblem(std::shared_ptr<FType> problem)
+  void Add(std::shared_ptr<FType> problem)
   {
     mProblems.push_back(problem);
   }
 
-  void DeleteProblem(unsigned problemIndex)
+  void GetBounds(double* lb, double* ub, unsigned problemIndex)
   {
-    mProblems.erase(mProblems.begin() + problemIndex);
+    mProblems[problemIndex]->GetDomainBounds(lb, ub);
   }
 
-  void GetBounds(double* lb, double* ub)
-  {
-    if (mProblems.size() > 0)
-      mProblems[0]->GetDomainBounds(lb, ub);
-  }
-
-  unsigned Size() const
+  unsigned GetSize() const
   {
     return mProblems.size();
   }
 
-  unsigned GetDimension() const
+  unsigned GetDimension(unsigned problemIndex = 0) const
   {
-    if(mProblems.size() > 0)
-      return mProblems[0]->GetDimension();
-    else
-      return 0;
+    return mProblems[problemIndex]->GetDimension();
   }
 
   double CalculateObjective(const double* y, unsigned problemIndex)

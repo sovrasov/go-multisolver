@@ -1016,7 +1016,7 @@ int GKLSFunction::GetOptimumCoordinates(double* argmin) const
   else
     return -1;
 }
-void GKLSFunction::GetDomainBounds(double* lowerBound, double* upperBound)
+void GKLSFunction::GetDomainBounds(double* lowerBound, double* upperBound) const
 {
   for(unsigned i = 0; i < GKLS_dim; i++)
   {

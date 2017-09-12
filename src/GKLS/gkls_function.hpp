@@ -39,11 +39,12 @@
 #ifndef __GKLS_FUNCTION_HPP__
 #define __GKLS_FUNCTION_HPP__
 
+#include "problem_interface.hpp"
 #include "gkls_random.hpp"
 
 #define PROPERTY(T, N)     \
-	T Get ## N() const;     \
-	void Set ## N(T value);
+  T Get ## N() const;     \
+  void Set ## N(T value);
 
 namespace gkls
 {
@@ -115,38 +116,39 @@ namespace gkls
   } T_GKLS_GlobalMinima;
 
   enum GKLSClass { Hard, Simple };
-	enum GKLSFuncionType { TND, TD, TD2 };
+  enum GKLSFuncionType { TND, TD, TD2 };
 
-	struct GKLSParameters
-	{
-		unsigned dimension;
+  struct GKLSParameters
+  {
+    unsigned dimension;
     double globalMinimumValue;
     unsigned numberOfLocalMinima;
     double globalDistance;
     double globalRadius;
-		GKLSFuncionType type;
+    GKLSFuncionType type;
 
-		GKLSParameters() {}
-		GKLSParameters(unsigned _dimension, double _globalMinimumValue,
-									 unsigned _numberOfLocalMinima, double _globalDistance,
-								 	 double _globalRadius, GKLSFuncionType _type) :
-									 dimension(_dimension),
-									 globalMinimumValue(_globalMinimumValue),
-									 numberOfLocalMinima(_numberOfLocalMinima),
-									 globalDistance(_globalDistance),
-									 globalRadius(_globalRadius),
-									 type(_type)
-		{}
-	};
+    GKLSParameters() {}
+    GKLSParameters(unsigned _dimension, double _globalMinimumValue,
+                   unsigned _numberOfLocalMinima, double _globalDistance,
+                    double _globalRadius, GKLSFuncionType _type) :
+                   dimension(_dimension),
+                   globalMinimumValue(_globalMinimumValue),
+                   numberOfLocalMinima(_numberOfLocalMinima),
+                   globalDistance(_globalDistance),
+                   globalRadius(_globalRadius),
+                   type(_type)
+    {}
+  };
 
-  class GKLSFunction {
+  class GKLSFunction : public IGOPRoblem
+  {
 
   private:
     int mFunctionNumber;
     unsigned mDimension;
     bool mIsGeneratorMemoryAllocated;
     bool mIsDomainMemeoryAllocated;
-		GKLSFuncionType mFunctionType;
+    GKLSFuncionType mFunctionType;
     gkls::randomgenerator::GKLSRandomGenerator mRndGenerator;
 
     /*-------------- Variables accessible by the user --------------------- */
@@ -200,15 +202,15 @@ namespace gkls
     PROPERTY(double, OptimalValue);
     PROPERTY(unsigned, NumberOfLocalMinima);
     PROPERTY(double, GlobalDistance);
-		PROPERTY(double, GlobalRadius);
+    PROPERTY(double, GlobalRadius);
     PROPERTY(GKLSFuncionType, Type);
-		PROPERTY(GKLSParameters, Parameters);
+    PROPERTY(GKLSParameters, Parameters);
 
     void SetDefaultParameters();
     int CheckParameters() const;
     void SetFunctionClass(GKLSClass type, unsigned dimension);
 
-		double Calculate(const double* x) const;
+    double Calculate(const double* x) const;
 
     double CalculateNDFunction(const double* x) const;
     double CalculateDFunction(const double* x) const;
@@ -224,7 +226,7 @@ namespace gkls
     int CalculateD2FunctionHessian(const double* x, double** h) const;
 
     int GetOptimumCoordinates(double* argmin) const;
-		void GetDomainBounds(double* lowerBound, double* upperBound);
+    void GetDomainBounds(double* lowerBound, double* upperBound) const;
   };
 }
 #endif
