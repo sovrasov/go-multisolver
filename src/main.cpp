@@ -31,6 +31,7 @@ int main(int argc, char** argv)
   parser.add<std::string>("runMode", 'm', "", false, "multi", cmdline::oneof(
     std::string("multi"), std::string("synch"), std::string("asynch")));
   parser.add("hard", 'h', "determines type of GKLS functions");
+  parser.add("mixedClass", 'c', "use mixed GKLS/Grishagin problems pool");
   parser.parse_check(argc, argv);
 
   gkls::GKLSClass problemsClass = parser.exist("hard") ? gkls::Hard : gkls::Simple;
@@ -50,7 +51,7 @@ int main(int argc, char** argv)
     ProblemsPool<IGOPRoblem> pool;
     for (unsigned i = 0; i < nProblems; i++)
     {
-      if(i % 2 == 0)
+      if(i % 2 == 0 || !parser.exist("mixedClass"))
       {
         gkls::GKLSFunction* func = new gkls::GKLSFunction();
         func->SetFunctionClass(problemsClass, parser.get<int>("dimension"));
@@ -108,7 +109,7 @@ int main(int argc, char** argv)
     {
       ProblemsPool<IGOPRoblem> pool;
       IGOPRoblem* func;
-      if(i % 2 == 0)
+      if(i % 2 == 0 || !parser.exist("mixedClass"))
       {
         gkls::GKLSFunction* funcPtr = new gkls::GKLSFunction();
         funcPtr->SetFunctionClass(problemsClass, parser.get<int>("dimension"));
