@@ -199,8 +199,10 @@ void invmad(int m, double xp[], int kp,
         xp[k + 1] = x;
       }
     }
-  m6: for (i = n - 1; (i >= 0) && (u[i] = (u[i] <= 0.0) ? 1 : -1)<0; i--);
-    if (i<0) break;
+  m6: for (i = n - 1; (i >= 0) && (u[i] = (u[i] <= 0.0) ? 1 : -1)<0; i--)
+    ;
+  if (i<0)
+    break;
   }
   *kxx = ++kx;
 
@@ -215,7 +217,7 @@ void mapd(double x, int m, double* y, int n, int key)
   double d, mne, dd, dr;//,tmp;
   double p, r;
   int iw[11];
-  int it, is, i, j, k;
+  int it, is=0, i, j, k;
   void node(int is, int n1, int nexp, int& l, int& iq, int iu[], int iv[]);
 
   p = 0.0;
@@ -282,8 +284,10 @@ void mapd(double x, int m, double* y, int n, int key)
     }
   }
   if (key == 2) {
-    if (is == (nexp - 1)) i = -1;
-    else i = 1;
+    if (is == (nexp - 1))
+      i = -1;
+    else
+      i = 1;
     p = 2 * i*iu[k] * r*d;
     p = y[k] - p;
     y[k] = p;
