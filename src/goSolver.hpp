@@ -84,6 +84,7 @@ protected:
   unsigned mIterationsCounter;
   unsigned mNumberOfActiveProblems;
   unsigned mNumberOfTrials;
+  double mDimExponent;
 
   void InitDataStructures();
   void FirstIteration();
@@ -320,8 +321,7 @@ void GOSolver<FType>::InsertIntervals()
     Interval* pNewInterval = new Interval(mNextPoints[i].x, mNextIntervals[i]->xr);
     pNewInterval->zl = mNextPoints[i].z;
     pNewInterval->zr = mNextIntervals[i]->zr;
-    pNewInterval->delta = pow(pNewInterval->xr - pNewInterval->xl,
-      1. / mProblems.GetDimension());
+    pNewInterval->delta = pow(pNewInterval->xr - pNewInterval->xl, mDimExponent);
     pNewInterval->problemIdx = mNextIntervals[i]->problemIdx;
     bool wasInserted =
       mSearchInformations[mNextIntervals[i]->problemIdx].insert(pNewInterval).second;
@@ -331,7 +331,7 @@ void GOSolver<FType>::InsertIntervals()
     mNextIntervals[i]->xr = mNextPoints[i].x;
     mNextIntervals[i]->zr = mNextPoints[i].z;
     mNextIntervals[i]->delta = pow(mNextIntervals[i]->xr - mNextIntervals[i]->xl,
-      1. / mProblems.GetDimension());
+      mDimExponent);
 
     UpdateH(mNextIntervals[i]);
     UpdateH(pNewInterval);
@@ -380,6 +380,8 @@ void GOSolver<FType>::InitDataStructures()
   mMinDifferences.resize(mProblems.GetSize());
   std::fill(mMinDifferences.begin(), mMinDifferences.end(), solver_internal::
     vectorsMaxDiff(leftDomainBound, rightDomainBound, mProblems.GetDimension()));
+
+  mDimExponent = 1. / mProblems.GetDimension();
 }
 
 template <class FType>

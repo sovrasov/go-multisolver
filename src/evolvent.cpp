@@ -41,12 +41,12 @@ Evolvent::Evolvent(int dimension, int tightness, MapType type)
   mIsInitialized = true;
 }
 
-void Evolvent::GetImage(double x, double y[])
+void Evolvent::GetImage(double x, double y[]) const
 {
   mapd(x, mTightness, y, mDimension, mMapKey);
 }
 
-void Evolvent::GetImage(double x, double y[], double lb[], double ub[])
+void Evolvent::GetImage(double x, double y[], const double lb[], const double ub[]) const
 {
   mapd(x, mTightness, y, mDimension, mMapKey);
   for(int i = 0; i < mDimension; i++)
@@ -114,7 +114,7 @@ void numbr(int *iss)
 {
   /* calculate s(u)=is,l(u)=l,v(u)=iv by u=iu */
 
-  int i, n, is, iff, k1, k2, l1;
+  int i, n, is, iff, k1, k2, l1 = 0;
 
   n = n1 + 1;
   iff = nexp;

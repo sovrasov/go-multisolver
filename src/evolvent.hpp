@@ -23,8 +23,8 @@ public:
   Evolvent(int dimension, int tightness, MapType type = Simple);
   ~Evolvent();
 
-  void GetImage(double x, double y[]);
-  void GetImage(double x, double y[], double lb[], double ub[]);
+  void GetImage(double x, double y[]) const;
+  void GetImage(double x, double y[], const double lb[], const double ub[]) const;
   int GetAllPreimages(double* p, double xp[]);
 };
 
