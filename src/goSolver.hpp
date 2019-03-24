@@ -152,7 +152,7 @@ void GOSolver<FType>::Solve()
 template <class FType>
 void GOSolver<FType>::CollectStatistics()
 {
-  StatPoint currentDevs(mNumberOfTrials, 0., 0.);
+  StatPoint currentDevs(mNumberOfTrials);
   for (size_t j = 0; j < mProblems.GetSize(); j++)
   {
     double difference;
@@ -162,6 +162,8 @@ void GOSolver<FType>::CollectStatistics()
       difference = mOptimumEstimations[j].z - mProblems.GetOptimalValue(j);
     currentDevs.meanDev += difference;
     currentDevs.maxDev = fmax(currentDevs.maxDev, difference);
+    if (difference < mParameters.eps)
+      currentDevs.problems_solved++;
   }
   currentDevs.meanDev /= mProblems.GetSize();
 

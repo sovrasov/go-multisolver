@@ -81,6 +81,8 @@ int main(int argc, char** argv)
 
     std::cout << "Number of trials: " << solver.GetTrialsNumber()
       << "\nNumber of iterations: " << solver.GetIterationsNumber() << "\n";
+    if(!statistics.empty())
+      std::cout << "Problems solved: " << statistics.back().problems_solved << std::endl;
     //  for(size_t i = 0; i < optimumEstimations.size(); i++)
     //    std::cout << "Optimum value in problem #" << i + 1 << ": " << optimumEstimations[i].z << "\n";
   }
@@ -146,6 +148,8 @@ int main(int argc, char** argv)
           nextDeviation.maxDev = std::max(lastStatistics.maxDev, currentDev);
         else
           nextDeviation.maxDev = currentDev;
+        if (currentDev < parameters.eps)
+          nextDeviation.problems_solved = lastStatistics.problems_solved + 1;
         nextDeviation.meanDev = lastStatistics.meanDev + (-2. + currentDev) / 100.;
 
         statistics.push_back(nextDeviation);
@@ -156,6 +160,7 @@ int main(int argc, char** argv)
       }
     }
     std::cout << "Trials performed: " << lastStatistics.trial << "\n";
+    std::cout << "Problems solved: " << lastStatistics.problems_solved << "\n";
   }
   auto end = std::chrono::system_clock::now();
   std::chrono::duration<double> elapsed_seconds = end - start;

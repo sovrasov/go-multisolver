@@ -44,10 +44,11 @@ struct StatPoint
   unsigned trial;
   double maxDev;
   double meanDev;
+  unsigned problems_solved;
 
   StatPoint() {}
-  StatPoint(unsigned _trial, double _maxDev, double _meanDev) :
-    trial(_trial), maxDev(_maxDev), meanDev(_meanDev) {}
+  StatPoint(unsigned _trial, double _maxDev = 0., double _meanDev = 0.) :
+    trial(_trial), maxDev(_maxDev), meanDev(_meanDev), problems_solved(0) {}
 };
 
 #endif
