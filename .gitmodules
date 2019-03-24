@@ -4,3 +4,6 @@
 [submodule "3rd-party/cmdline"]
 	path = 3rd-party/cmdline
 	url = https://github.com/sovrasov/cmdline.git
+[submodule "3rd-party/GCGen"]
+	path = 3rd-party/GCGen
+	url = https://github.com/UNN-ITMM-Software/GCGen.git
