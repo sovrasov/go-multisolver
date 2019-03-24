@@ -20,7 +20,7 @@ public:
 
   void GetBounds(double* lb, double* ub, unsigned problemIndex)
   {
-    mProblems[problemIndex]->GetDomainBounds(lb, ub);
+    mProblems[problemIndex]->GetBounds(lb, ub);
   }
 
   unsigned GetSize() const
@@ -35,17 +35,17 @@ public:
 
   double CalculateObjective(const double* y, unsigned problemIndex)
   {
-    return mProblems[problemIndex]->Calculate(y);
+    return mProblems[problemIndex]->Calculate(y, 0);
   }
 
   double GetOptimalValue(unsigned problemIndex) const
   {
-    return mProblems[problemIndex]->GetOptimalValue();
+    return mProblems[problemIndex]->GetOptimumValue();
   }
 
   void GetOptimumCoordinates(double* y, unsigned problemIndex) const
   {
-    mProblems[problemIndex]->GetOptimumCoordinates(y);
+    mProblems[problemIndex]->GetOptimumPoint(y);
   }
 };
 

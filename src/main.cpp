@@ -1,14 +1,16 @@
-#include "Grishagin/grishagin_function.hpp"
-#include "GKLS/gkls_function.hpp"
-#include "problemsPool.hpp"
-#include "goSolver.hpp"
+#include <gkls_function.hpp>
+#include <grishagin_function.hpp>
+#include <json.hpp>
+#include <cmdline.h>
 
 #include <iostream>
 #include <fstream>
 #include <chrono>
 #include <memory>
-#include <cmdline.h>
 #include <omp.h>
+
+#include "problemsPool.hpp"
+#include "goSolver.hpp"
 
 int main(int argc, char** argv)
 {
@@ -48,7 +50,7 @@ int main(int argc, char** argv)
   if (parser.get<std::string>("runMode") == std::string("multi"))
   {
     parameters.logDeviations = parser.exist("saveStatistics");
-    ProblemsPool<IGOPRoblem> pool;
+    ProblemsPool<IGOProblem<double>> pool;
     for (unsigned i = 0; i < nProblems; i++)
     {
       if(i % 2 == 0 || !parser.exist("mixedClass"))
@@ -57,19 +59,19 @@ int main(int argc, char** argv)
         func->SetFunctionClass(problemsClass, parser.get<int>("dimension"));
         func->SetType(gkls::TD);
         func->SetFunctionNumber(i + 1);
-        pool.Add(std::shared_ptr<IGOPRoblem>(func));
+        pool.Add(std::shared_ptr<IGOProblem<double>>(func));
       }
       else
       {
         vagrish::GrishaginFunction* func = new vagrish::GrishaginFunction();
         func->SetFunctionNumber(i + 1);
-        pool.Add(std::shared_ptr<IGOPRoblem>(func));
+        pool.Add(std::shared_ptr<IGOProblem<double>>(func));
       }
     }
 
     std::cout << "Problems pool created\n";
 
-    GOSolver<IGOPRoblem> solver;
+    GOSolver<IGOProblem<double>> solver;
     solver.SetParameters(parameters);
     solver.SetProblemsPool(pool);
     std::cout << "Solver started\n";
@@ -107,32 +109,32 @@ int main(int argc, char** argv)
 #endif
     for (int i = 0; i < (int)nProblems; i++)
     {
-      ProblemsPool<IGOPRoblem> pool;
-      IGOPRoblem* func;
+      ProblemsPool<IGOProblem<double>> pool;
+      IGOProblem<double>* func;
       if(i % 2 == 0 || !parser.exist("mixedClass"))
       {
         gkls::GKLSFunction* funcPtr = new gkls::GKLSFunction();
         funcPtr->SetFunctionClass(problemsClass, parser.get<int>("dimension"));
         funcPtr->SetType(gkls::TD);
         funcPtr->SetFunctionNumber(i + 1);
-        pool.Add(std::shared_ptr<IGOPRoblem>(funcPtr));
+        pool.Add(std::shared_ptr<IGOProblem<double>>(funcPtr));
         func = funcPtr;
       }
       else
       {
         vagrish::GrishaginFunction* funcPtr = new vagrish::GrishaginFunction();
         funcPtr->SetFunctionNumber(i + 1);
-        pool.Add(std::shared_ptr<IGOPRoblem>(funcPtr));
+        pool.Add(std::shared_ptr<IGOProblem<double>>(funcPtr));
         func = funcPtr;
       }
 
-      GOSolver<IGOPRoblem> solver;
+      GOSolver<IGOProblem<double>> solver;
       solver.SetParameters(parameters);
       solver.SetProblemsPool(pool);
       solver.Solve();
 
       double optPoint[solverMaxDim];
-      func->GetOptimumCoordinates(optPoint);
+      func->GetOptimumPoint(optPoint);
       double currentDev = solver_internal::vectorsMaxDiff(optPoint,
         solver.GetOptimumEstimations()[0].y, func->GetDimension());
 
