@@ -113,8 +113,10 @@ public:
 template <class PoolType>
 double GOSolver<PoolType>::GetNextPointCoordinate(const Interval* i) const
 {
-  return 0.5 * (i->xl + i->xr) -
-    (((i->zr - i->zl) > 0.) ? 1. : -1.) * pow(fabs(i->zr - i->zl) /
+  int v = i->xl.v;
+  double diff = i->xr.z[v] - i->xl.z[v];
+  return 0.5 * (i->xl.x + i->xr.x) -
+    ((diff > 0.) ? 1. : -1.) * pow(fabs(diff) /
       mHEstimations[i->problemIdx], mProblems.GetDimension()) / 2. / mParameters.r;
 }
 
@@ -158,7 +160,7 @@ void GOSolver<PoolType>::CollectStatistics()
     if (mParameters.criterion != StopType::OptimalValue)
       difference = mMinDifferences[j];
     else
-      difference = mOptimumEstimations[j].z - mProblems.GetOptimalValue(j);
+      difference = mOptimumEstimations[j].GetZ() - mProblems.GetOptimalValue(j);
     currentDevs.meanDev += difference;
     currentDevs.maxDev = fmax(currentDevs.maxDev, difference);
     if (difference < mParameters.eps)
@@ -195,7 +197,7 @@ bool GOSolver<PoolType>::CheckStopCondition()
     }
       break;
     case StopType::OptimalValue:
-      isOptimumReached = mNextPoints[i].z -
+      isOptimumReached = mNextPoints[i].GetZ() -
         mProblems.GetOptimalValue(mNextIntervals[i]->problemIdx) < mParameters.eps;
     }
 
@@ -216,7 +218,7 @@ bool GOSolver<PoolType>::CheckStopCondition()
           " Problems left: " << mNumberOfActiveProblems << " coordinates diff: " <<
           solver_internal::vectorsMaxDiff(
             optimum, mNextPoints[i].y, mProblems.GetDimension()) << " Values diff: " <<
-          mNextPoints[i].z - mProblems.GetOptimalValue(mNextIntervals[i]->problemIdx) <<
+          mNextPoints[i].GetZ() - mProblems.GetOptimalValue(mNextIntervals[i]->problemIdx) <<
           " H estimation: " << mHEstimations[mNextIntervals[i]->problemIdx] << "\n";
       }
 
@@ -247,7 +249,7 @@ void GOSolver<PoolType>::CalculateNextPoints()
     mQueue.pop();
     mNextPoints[i].x = GetNextPointCoordinate(mNextIntervals[i]);
 
-    if (mNextPoints[i].x >= mNextIntervals[i]->xr || mNextPoints[i].x <= mNextIntervals[i]->xl)
+    if (mNextPoints[i].x >= mNextIntervals[i]->xr.x || mNextPoints[i].x <= mNextIntervals[i]->xl.x)
       throw std::runtime_error("The next point is outside of the subdivided interval");
 
     mEvolvent.GetImage(mNextPoints[i].x, mNextPoints[i].y,
@@ -292,7 +294,7 @@ void GOSolver<PoolType>::EstimateOptimums()
 template <class PoolType>
 void GOSolver<PoolType>::UpdateH(const Interval* i)
 {
-  double intervalH = fabs(i->zr - i->zl) / i->delta;
+  double intervalH = fabs(i->xr.z[i->xr.v] - i->xl.z[i->xl.v]) / i->delta;
   double oldH = mHEstimations[i->problemIdx];
 
   if (intervalH > oldH || (oldH == 1.0 && intervalH > solver_internal::zeroHLevel))
@@ -308,9 +310,10 @@ double GOSolver<PoolType>::CalculateR(const Interval* i)
   unsigned problemIdx = i->problemIdx;
   double h = mHEstimations[problemIdx];
   double r = mParameters.r;
+  int v = i->xr.v;
   double value = i->delta +
-    (i->zr - i->zl) * (i->zr - i->zl) / (i->delta * h * h * r * r) -
-      2 * (i->zr + i->zl - 2 * mOptimumEstimations[problemIdx].z) / (r * h);
+    (i->xr.z[v] - i->xl.z[v]) * (i->xr.z[v] - i->xl.z[v]) / (i->delta * h * h * r * r) -
+      2 * (i->xr.z[v] + i ->xl.z[v] - 2 * mOptimumEstimations[problemIdx].z[v]) / (r * h);
   return value;
 }
 
@@ -319,19 +322,16 @@ void GOSolver<PoolType>::InsertIntervals()
 {
   for(size_t i = 0; i < mParameters.numThreads; i++)
   {
-    Interval* pNewInterval = new Interval(mNextPoints[i].x, mNextIntervals[i]->xr);
-    pNewInterval->zl = mNextPoints[i].z;
-    pNewInterval->zr = mNextIntervals[i]->zr;
-    pNewInterval->delta = pow(pNewInterval->xr - pNewInterval->xl, mDimExponent);
+    Interval* pNewInterval = new Interval(mNextPoints[i], mNextIntervals[i]->xr);
+    pNewInterval->delta = pow(pNewInterval->xr.x - pNewInterval->xl.x, mDimExponent);
     pNewInterval->problemIdx = mNextIntervals[i]->problemIdx;
     bool wasInserted =
       mSearchInformations[mNextIntervals[i]->problemIdx].insert(pNewInterval).second;
     if(!wasInserted)
       throw std::runtime_error("Error during interval insertion.");
 
-    mNextIntervals[i]->xr = mNextPoints[i].x;
-    mNextIntervals[i]->zr = mNextPoints[i].z;
-    mNextIntervals[i]->delta = pow(mNextIntervals[i]->xr - mNextIntervals[i]->xl,
+    mNextIntervals[i]->xr = mNextPoints[i];
+    mNextIntervals[i]->delta = pow(mNextIntervals[i]->xr.x - mNextIntervals[i]->xl.x,
       mDimExponent);
 
     UpdateH(mNextIntervals[i]);
@@ -354,7 +354,8 @@ void GOSolver<PoolType>::MakeTrials()
 #pragma omp parallel for num_threads(mParameters.numThreads)
   for(int i = 0; i < (int)mParameters.numThreads; i++)
   {
-    mNextPoints[i].z = mProblems.CalculateObjective(mNextPoints[i].y, mNextIntervals[i]->problemIdx);
+    mNextPoints[i].v = 0;
+    mNextPoints[i].z[0] = mProblems.CalculateObjective(mNextPoints[i].y, mNextIntervals[i]->problemIdx);
   }
 }
 
@@ -377,7 +378,7 @@ void GOSolver<PoolType>::InitDataStructures()
   mHEstimations.resize(mProblems.GetSize());
   std::fill(mHEstimations.begin(), mHEstimations.end(), 1.0);
   mOptimumEstimations.resize(mProblems.GetSize());
-  std::fill(mOptimumEstimations.begin(), mOptimumEstimations.end(), Trial(0., HUGE_VAL));
+  std::fill(mOptimumEstimations.begin(), mOptimumEstimations.end(), Trial(0.));
   mMinDifferences.resize(mProblems.GetSize());
   std::fill(mMinDifferences.begin(), mMinDifferences.end(), solver_internal::
     vectorsMaxDiff(leftDomainBound, rightDomainBound, mProblems.GetDimension()));
@@ -410,20 +411,23 @@ void GOSolver<PoolType>::FirstIteration()
     pFirstInterval->delta = 1.;
     pFirstInterval->problemIdx = i;
     double yl[solverMaxDim], yr[solverMaxDim];
-    mEvolvent.GetImage(pFirstInterval->xl, yl, mLowerDomainBounds[i].data(), mUpperDomainBounds[i].data());
-    pFirstInterval->zl = mProblems.CalculateObjective(yl, i);
-    mEvolvent.GetImage(pFirstInterval->xr, yr, mLowerDomainBounds[i].data(), mUpperDomainBounds[i].data());
-    pFirstInterval->zr = mProblems.CalculateObjective(yr, i);
+    mEvolvent.GetImage(pFirstInterval->xl.x, yl, mLowerDomainBounds[i].data(), mUpperDomainBounds[i].data());
+    pFirstInterval->xl.z[pFirstInterval->xl.v] = mProblems.CalculateObjective(yl, i);
+    mEvolvent.GetImage(pFirstInterval->xr.x, yr, mLowerDomainBounds[i].data(), mUpperDomainBounds[i].data());
+    pFirstInterval->xr.z[pFirstInterval->xr.v] = mProblems.CalculateObjective(yr, i);
     mSearchInformations[i].insert(pFirstInterval);
     UpdateH(pFirstInterval);
-    if(pFirstInterval->zl < pFirstInterval->zr)
+    if(pFirstInterval->xl.z[pFirstInterval->xl.v] < pFirstInterval->xr.z[pFirstInterval->xr.v] &&
+       pFirstInterval->xl.v >= pFirstInterval->xr.v)
     {
-      mOptimumEstimations[i] = Trial(pFirstInterval->xl, pFirstInterval->zl);
-      std::copy_n(yl, mProblems.GetDimension(), mOptimumEstimations[i].y);
+        mOptimumEstimations[i] = Trial(pFirstInterval->xl.x);
+        std::copy_n(pFirstInterval->xl.z, mProblems.GetDimension(), mOptimumEstimations[i].z);
+        std::copy_n(yl, mProblems.GetDimension(), mOptimumEstimations[i].y);
     }
     else
     {
-      mOptimumEstimations[i] = Trial(pFirstInterval->xr, pFirstInterval->zr);
+      mOptimumEstimations[i] = Trial(pFirstInterval->xr.x);
+      std::copy_n(pFirstInterval->xr.z, mProblems.GetDimension(), mOptimumEstimations[i].z);
       std::copy_n(yr, mProblems.GetDimension(), mOptimumEstimations[i].y);
     }
   }

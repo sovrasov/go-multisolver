@@ -2,32 +2,55 @@
 #define DATA_TYPES_HPP
 
 const unsigned solverMaxDim = 5;
+const unsigned solverMaxFunctionsNum = 5;
 
 struct Trial
 {
   double x;
   double y[solverMaxDim];
-  double z;
-  Trial() {}
-  Trial(double _x, double _z) : x(_x), z(_z) {}
+  int v;
+  double z[solverMaxFunctionsNum];
+  Trial() : v(0) {}
+  Trial(double _x) : x(_x), v(0) {}
+
+  double GetZ() const
+  {
+    return z[v];
+  }
+};
+
+struct Point
+{
+  double x;
+  int v;
+  double z[solverMaxFunctionsNum];
+  Point() : v(0) {}
+  Point(double _x) : x(_x), v(0) {}
+  Point(const Trial& t) : x(t.x), v(t.v)
+  {
+    std::memcpy(z, t.z, solverMaxFunctionsNum*sizeof(double));
+  }
+
+  double GetZ() const
+  {
+    return z[v];
+  }
 };
 
 struct Interval
 {
-  double xl;
-  double xr;
-  double zl;
-  double zr;
+  Point xl;
+  Point xr;
   double R;
   double delta;
   unsigned problemIdx;
   Interval() {}
-  Interval(double _xl, double _xr) : xl(_xl), xr(_xr) {}
+  Interval(const Point& _xl, const Point& _xr) : xl(_xl), xr(_xr) {}
 };
 
 inline bool operator<(const Interval& i1, const Interval& i2)
 {
-  return i1.xl < i2.xl;
+  return i1.xl.x < i2.xl.x;
 }
 
 class CompareByR
