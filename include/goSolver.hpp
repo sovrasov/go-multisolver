@@ -1,7 +1,6 @@
 #ifndef GO_SOLVER_HPP
 #define GO_SOLVER_HPP
 
-#include "problemsPool.hpp"
 #include "dataTypes.hpp"
 #include "evolvent.hpp"
 
@@ -61,13 +60,13 @@ struct SolverParameters
   {}
 };
 
-template <class FType>
+template <class PoolType>
 class GOSolver
 {
 protected:
 
   SolverParameters mParameters;
-  ProblemsPool<FType> mProblems;
+  PoolType mProblems;
   std::vector<bool> mActiveProblemsMask;
   std::vector<double> mHEstimations;
   std::vector<Trial> mOptimumEstimations;
@@ -102,7 +101,7 @@ protected:
 
 public:
 
-  void SetProblemsPool(ProblemsPool<FType>& problems);
+  void SetProblemsPool(PoolType& problems);
   void SetParameters(SolverParameters& params);
   void Solve();
   std::vector<Trial> GetOptimumEstimations();
@@ -111,16 +110,16 @@ public:
   std::vector<StatPoint> GetStatistics() const { return mStatiscics; }
 };
 
-template <class FType>
-double GOSolver<FType>::GetNextPointCoordinate(const Interval* i) const
+template <class PoolType>
+double GOSolver<PoolType>::GetNextPointCoordinate(const Interval* i) const
 {
   return 0.5 * (i->xl + i->xr) -
     (((i->zr - i->zl) > 0.) ? 1. : -1.) * pow(fabs(i->zr - i->zl) /
       mHEstimations[i->problemIdx], mProblems.GetDimension()) / 2. / mParameters.r;
 }
 
-template <class FType>
-void GOSolver<FType>::Solve()
+template <class PoolType>
+void GOSolver<PoolType>::Solve()
 {
   bool needStop = false;
   InitDataStructures();
@@ -149,8 +148,8 @@ void GOSolver<FType>::Solve()
   ClearDataStructures();
 }
 
-template <class FType>
-void GOSolver<FType>::CollectStatistics()
+template <class PoolType>
+void GOSolver<PoolType>::CollectStatistics()
 {
   StatPoint currentDevs(mNumberOfTrials);
   for (size_t j = 0; j < mProblems.GetSize(); j++)
@@ -170,8 +169,8 @@ void GOSolver<FType>::CollectStatistics()
   mStatiscics.push_back(currentDevs);
 }
 
-template <class FType>
-bool GOSolver<FType>::CheckStopCondition()
+template <class PoolType>
+bool GOSolver<PoolType>::CheckStopCondition()
 {
   bool needStop = false;
   bool needRenewIntervals = false;
@@ -239,8 +238,8 @@ bool GOSolver<FType>::CheckStopCondition()
   return needStop;
 }
 
-template <class FType>
-void GOSolver<FType>::CalculateNextPoints()
+template <class PoolType>
+void GOSolver<PoolType>::CalculateNextPoints()
 {
   for(size_t i = 0; i < mParameters.numThreads; i++)
   {
@@ -257,8 +256,8 @@ void GOSolver<FType>::CalculateNextPoints()
   }
 }
 
-template <class FType>
-void GOSolver<FType>::RefillQueue()
+template <class PoolType>
+void GOSolver<PoolType>::RefillQueue()
 {
   mQueue = solver_internal::PriorityQueue();
 
@@ -276,8 +275,8 @@ void GOSolver<FType>::RefillQueue()
   mNeeRefillQueue = false;
 }
 
-template <class FType>
-void GOSolver<FType>::EstimateOptimums()
+template <class PoolType>
+void GOSolver<PoolType>::EstimateOptimums()
 {
   for(size_t i = 0; i < mParameters.numThreads; i++)
   {
@@ -290,8 +289,8 @@ void GOSolver<FType>::EstimateOptimums()
   }
 }
 
-template <class FType>
-void GOSolver<FType>::UpdateH(const Interval* i)
+template <class PoolType>
+void GOSolver<PoolType>::UpdateH(const Interval* i)
 {
   double intervalH = fabs(i->zr - i->zl) / i->delta;
   double oldH = mHEstimations[i->problemIdx];
@@ -303,8 +302,8 @@ void GOSolver<FType>::UpdateH(const Interval* i)
   }
 }
 
-template <class FType>
-double GOSolver<FType>::CalculateR(const Interval* i)
+template <class PoolType>
+double GOSolver<PoolType>::CalculateR(const Interval* i)
 {
   unsigned problemIdx = i->problemIdx;
   double h = mHEstimations[problemIdx];
@@ -315,8 +314,8 @@ double GOSolver<FType>::CalculateR(const Interval* i)
   return value;
 }
 
-template <class FType>
-void GOSolver<FType>::InsertIntervals()
+template <class PoolType>
+void GOSolver<PoolType>::InsertIntervals()
 {
   for(size_t i = 0; i < mParameters.numThreads; i++)
   {
@@ -348,8 +347,8 @@ void GOSolver<FType>::InsertIntervals()
   }
 }
 
-template <class FType>
-void GOSolver<FType>::MakeTrials()
+template <class PoolType>
+void GOSolver<PoolType>::MakeTrials()
 {
   mNumberOfTrials += mParameters.numThreads;
 #pragma omp parallel for num_threads(mParameters.numThreads)
@@ -359,8 +358,8 @@ void GOSolver<FType>::MakeTrials()
   }
 }
 
-template <class FType>
-void GOSolver<FType>::InitDataStructures()
+template <class PoolType>
+void GOSolver<PoolType>::InitDataStructures()
 {
   double leftDomainBound[solverMaxDim], rightDomainBound[solverMaxDim];
   mProblems.GetBounds(leftDomainBound, rightDomainBound, 0);
@@ -386,8 +385,8 @@ void GOSolver<FType>::InitDataStructures()
   mDimExponent = 1. / mProblems.GetDimension();
 }
 
-template <class FType>
-void GOSolver<FType>::ClearDataStructures()
+template <class PoolType>
+void GOSolver<PoolType>::ClearDataStructures()
 {
   for (size_t i = 0; i < mProblems.GetSize(); i++)
   {
@@ -398,8 +397,8 @@ void GOSolver<FType>::ClearDataStructures()
   mQueue = solver_internal::PriorityQueue();
 }
 
-template <class FType>
-void GOSolver<FType>::FirstIteration()
+template <class PoolType>
+void GOSolver<PoolType>::FirstIteration()
 {
   for (size_t i = 0; i < mProblems.GetSize(); i++)
   {
@@ -438,20 +437,20 @@ void GOSolver<FType>::FirstIteration()
   mNumberOfTrials = mProblems.GetSize() * 2;
 }
 
-template <class FType>
-void GOSolver<FType>::SetProblemsPool(ProblemsPool<FType>& problems)
+template <class PoolType>
+void GOSolver<PoolType>::SetProblemsPool(PoolType& problems)
 {
   mProblems = problems;
 }
 
-template <class FType>
-void GOSolver<FType>::SetParameters(SolverParameters& params)
+template <class PoolType>
+void GOSolver<PoolType>::SetParameters(SolverParameters& params)
 {
   mParameters = params;
 }
 
-template <class FType>
-std::vector<Trial> GOSolver<FType>::GetOptimumEstimations()
+template <class PoolType>
+std::vector<Trial> GOSolver<PoolType>::GetOptimumEstimations()
 {
   return mOptimumEstimations;
 }

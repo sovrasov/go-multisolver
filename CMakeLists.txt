@@ -35,7 +35,8 @@ file(GLOB GCGEN_SRC_FILES
                     ${CMAKE_CURRENT_SOURCE_DIR}/3rd-party/GCGen/src/*.hpp)
 
 add_executable(solve_constrained_sample ${CMAKE_CURRENT_SOURCE_DIR}/src/solve_constrained_sample.cpp ${GCGEN_SRC_FILES})
-target_include_directories(solve_constrained_sample PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/3rd-party/GCGen/src/)
+target_include_directories(solve_constrained_sample PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/3rd-party/GCGen/src/
+                                                            ${CMAKE_CURRENT_SOURCE_DIR}/3rd-party/GCGen/sample_src)
 target_link_libraries(solve_constrained_sample multisolver_core ${OpenMP_CXX_LIBRARIES})
 set_target_properties(solve_constrained_sample PROPERTIES COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
 

@@ -4,7 +4,7 @@
 #include <memory>
 
 template <class FType>
-class ProblemsPool
+class GCGenProblemsPool
 {
 protected:
 
@@ -19,12 +19,12 @@ public:
 
   void GetBounds(double* lb, double* ub, unsigned problemIndex)
   {
-    mProblems[problemIndex]->GetBounds(lb, ub);
+    throw -1;
   }
 
-  unsigned GetSize() const
+  unsigned GetConstraintsNumber(unsigned problemIndex) const
   {
-    return mProblems.size();
+    return static_cast<size_t>(mProblems[problemIndex]->GetConstraintsNumber());
   }
 
   unsigned GetDimension(unsigned problemIndex = 0) const
@@ -32,9 +32,18 @@ public:
     return mProblems[problemIndex]->GetDimension();
   }
 
+  unsigned GetSize() const
+  {
+    return mProblems.size();
+  }
+
   double CalculateObjective(const double* y, unsigned problemIndex, unsigned fIndex=0)
   {
-    return mProblems[problemIndex]->Calculate(y, 0);
+    std::vector<double> tmp_y(y, y + mProblems[problemIndex]->GetDimension());
+    if (fIndex == mProblems[problemIndex]->GetConstraintsNumber())
+      return mProblems[problemIndex]->ComputeFunction(tmp_y);
+    else
+      return mProblems[problemIndex]->ComputeConstraint(fIndex, tmp_y);
   }
 
   double GetOptimalValue(unsigned problemIndex) const
@@ -44,6 +53,7 @@ public:
 
   void GetOptimumCoordinates(double* y, unsigned problemIndex) const
   {
-    mProblems[problemIndex]->GetOptimumPoint(y);
+    auto point = mProblems[problemIndex]->GetOptimumPoint();
+    std::copy(point.data(), point.data() + point.size(), y);
   }
 };

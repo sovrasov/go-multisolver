@@ -71,7 +71,7 @@ int main(int argc, char** argv)
 
     std::cout << "Problems pool created\n";
 
-    GOSolver<IGOProblem<double>> solver;
+    GOSolver<ProblemsPool<IGOProblem<double>>> solver;
     solver.SetParameters(parameters);
     solver.SetProblemsPool(pool);
     std::cout << "Solver started\n";
@@ -130,7 +130,7 @@ int main(int argc, char** argv)
         func = funcPtr;
       }
 
-      GOSolver<IGOProblem<double>> solver;
+      GOSolver<ProblemsPool<IGOProblem<double>>> solver;
       solver.SetParameters(parameters);
       solver.SetProblemsPool(pool);
       solver.Solve();

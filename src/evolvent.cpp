@@ -27,13 +27,13 @@ Evolvent::Evolvent(int dimension, int tightness, MapType type)
 
   switch (mMapType)
   {
-  case Simple:
+  case MapType::Simple:
     mMapKey = 1;
     break;
-  case Linear:
+  case MapType::Linear:
     mMapKey = 2;
     break;
-  case Noninjective:
+  case MapType::Noninjective:
     mMapKey = 3;
     break;
   }
@@ -56,7 +56,7 @@ void Evolvent::GetImage(double x, double y[], const double lb[], const double ub
 int Evolvent::GetAllPreimages(double * p, double xp[])
 {
   int preimNumber = 1;
-  if(mMapType == Noninjective)
+  if(mMapType == MapType::Noninjective)
     invmad(mTightness, xp, MAX_PREIMAGES, &preimNumber, p, mDimension, 4);
   else
     xyd(xp, mTightness, p, mDimension);

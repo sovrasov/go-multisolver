@@ -3,7 +3,7 @@
 
 #define MAX_PREIMAGES 32
 
-enum MapType {
+enum class MapType {
   Simple = 1, Linear = 2, Noninjective = 3
 };
 
@@ -20,7 +20,7 @@ private:
 
 public:
   Evolvent();
-  Evolvent(int dimension, int tightness, MapType type = Simple);
+  Evolvent(int dimension, int tightness, MapType type = MapType::Simple);
   ~Evolvent();
 
   void GetImage(double x, double y[]) const;
