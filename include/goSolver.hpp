@@ -314,13 +314,18 @@ template <class PoolType>
 double GOSolver<PoolType>::CalculateR(const Interval* i)
 {
   unsigned problemIdx = i->problemIdx;
-  double h = mHEstimations[problemIdx][0];
   double r = mParameters.r;
-  int v = i->xr.v;
-  double value = i->delta +
-    (i->xr.z[v] - i->xl.z[v]) * (i->xr.z[v] - i->xl.z[v]) / (i->delta * h * h * r * r) -
-      2 * (i->xr.z[v] + i ->xl.z[v] - 2 * mOptimumEstimations[problemIdx].z[v]) / (r * h);
-  return value;
+  if(i->xl.v == i->xr.v)
+  {
+    const int v = i->xr.v;
+    const double h = mHEstimations[problemIdx][v];
+    return i->delta + pow((i->xr.z[v] - i->xl.z[v]) / (r * h), 2) / i->delta -
+      2.*(i->xr.z[v] + i->xl.z[v] - 2*mZEstimations[problemIdx][v]) / (r * h);
+  }
+  else if(i->xl.v < i->xr.v)
+    return 2*i->delta - 4*(i->xr.z[i->xr.v] - mZEstimations[problemIdx][i->xr.v]) / (r * mHEstimations[problemIdx][i->xr.v]);
+  else
+    return 2*i->delta - 4*(i->xl.z[i->xl.v] - mZEstimations[problemIdx][i->xl.v]) / (r * mHEstimations[problemIdx][i->xl.v]);
 }
 
 template <class PoolType>
