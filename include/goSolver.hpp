@@ -15,6 +15,7 @@ namespace solver_internal
 {
   const double zeroHLevel = 1e-12;
   using PriorityQueue = std::priority_queue<Interval*, std::vector<Interval*>, CompareByR>;
+  using IntervalsSet = std::set<Interval*, CompareIntervals>;
 
   bool checkVectorsDiff(const double* y1, const double* y2, size_t dim, double eps)
   {
@@ -75,7 +76,7 @@ protected:
   std::vector<Trial> mNextPoints;
   std::vector<double> mMinDifferences;
   std::vector<int> mMaxIndexes;
-  std::vector<std::set<Interval*>> mSearchInformations;
+  std::vector<solver_internal::IntervalsSet> mSearchInformations;
   std::vector<std::vector<double>> mLowerDomainBounds;
   std::vector<std::vector<double>> mUpperDomainBounds;
   solver_internal::PriorityQueue mQueue;
@@ -96,7 +97,8 @@ protected:
   void MakeTrial(const double*, int, double*, int&);
   double CalculateR(const Interval*);
   void InsertIntervals();
-  void UpdateH(const Interval*);
+  void UpdateH(double, int, int);
+  void UpdateAllH(solver_internal::IntervalsSet::iterator);
   void EstimateOptimums();
   void RefillQueue();
   void CalculateNextPoints();
@@ -303,15 +305,55 @@ void GOSolver<PoolType>::EstimateOptimums()
 }
 
 template <class PoolType>
-void GOSolver<PoolType>::UpdateH(const Interval* i)
+void GOSolver<PoolType>::UpdateH(double newValue, int problem_idx, int index)
 {
-  double intervalH = fabs(i->xr.z[i->xr.v] - i->xl.z[i->xl.v]) / i->delta;
-  double oldH = mHEstimations[i->problemIdx][0];
-
-  if (intervalH > oldH || (oldH == 1.0 && intervalH > solver_internal::zeroHLevel))
+  if (newValue > mHEstimations[problem_idx][index] ||
+        mHEstimations[problem_idx][index] == 1.0 && newValue > solver_internal::zeroHLevel)
   {
-    mHEstimations[i->problemIdx][0] = intervalH;
+    mHEstimations[problem_idx][index] = newValue;
     mNeedRefillQueue = true;
+  }
+}
+
+template <class PoolType>
+void GOSolver<PoolType>::UpdateAllH(solver_internal::IntervalsSet::iterator iterator)
+{
+  Interval* pInterval = *iterator;
+  if (pInterval->xl.v < 0)
+    return;
+
+  int problem_idx = pInterval->problemIdx;
+  if(pInterval->xl.v == pInterval->xr.v)
+  {
+    int idx = pInterval->xl.v;
+    UpdateH(fabs(pInterval->xr.z[idx] - pInterval->xl.z[idx]) /
+                 pInterval->delta, problem_idx, idx);
+  }
+  else
+  {
+    auto rightIterator = iterator;
+    auto leftIterator = iterator;
+    //right lookup
+    ++rightIterator;
+    while(rightIterator != mSearchInformations[problem_idx].end() && (*rightIterator)->xl.v < pInterval->xl.v)
+      ++rightIterator;
+    if (rightIterator != mSearchInformations[problem_idx].end() && (*rightIterator)->xl.v >= pInterval->xl.v)
+    {
+      int idx = pInterval->xl.v;
+      UpdateH(fabs((*rightIterator)->xl.z[idx] - pInterval->xl.z[idx]) /
+              pow((*rightIterator)->xl.x - pInterval->xl.x, 1. / mProblems.GetDimension()), problem_idx, idx);
+    }
+
+    //left lookup
+    --leftIterator;
+    while(leftIterator != mSearchInformations[problem_idx].begin() && (*leftIterator)->xl.v < pInterval->xl.v)
+      --leftIterator;
+    if (leftIterator != mSearchInformations[problem_idx].begin() && (*leftIterator)->xl.v >= pInterval->xl.v)
+    {
+      int idx = pInterval->xl.v;
+      UpdateH(fabs((*leftIterator)->xl.z[idx] - pInterval->xl.z[idx]) /
+              pow(pInterval->xl.x - (*leftIterator)->xl.x, 1. / mProblems.GetDimension()), problem_idx, idx);
+    }
   }
 }
 
@@ -341,8 +383,9 @@ void GOSolver<PoolType>::InsertIntervals()
     Interval* pNewInterval = new Interval(mNextPoints[i], mNextIntervals[i]->xr);
     pNewInterval->delta = pow(pNewInterval->xr.x - pNewInterval->xl.x, mDimExponent);
     pNewInterval->problemIdx = mNextIntervals[i]->problemIdx;
-    bool wasInserted =
-      mSearchInformations[mNextIntervals[i]->problemIdx].insert(pNewInterval).second;
+    solver_internal::IntervalsSet::iterator iter;
+    bool wasInserted;
+    std::tie(iter, wasInserted) = mSearchInformations[mNextIntervals[i]->problemIdx].insert(pNewInterval);
     if(!wasInserted)
       throw std::runtime_error("Error during interval insertion.");
 
@@ -350,8 +393,8 @@ void GOSolver<PoolType>::InsertIntervals()
     mNextIntervals[i]->delta = pow(mNextIntervals[i]->xr.x - mNextIntervals[i]->xl.x,
       mDimExponent);
 
-    UpdateH(mNextIntervals[i]);
-    UpdateH(pNewInterval);
+    UpdateAllH(iter);
+    UpdateAllH(--iter);
 
     if(!mNeedRefillQueue)
     {
@@ -484,8 +527,8 @@ void GOSolver<PoolType>::FirstIteration()
     MakeTrial(pFirstInterval->xl, yl, i);
     mEvolvent.GetImage(pFirstInterval->xr.x, yr, mLowerDomainBounds[i].data(), mUpperDomainBounds[i].data());
     MakeTrial(pFirstInterval->xr, yr, i);
-    mSearchInformations[i].insert(pFirstInterval);
-    UpdateH(pFirstInterval);
+    auto iter = mSearchInformations[i].insert(pFirstInterval).first;
+    UpdateAllH(iter);
     if(pFirstInterval->xl.z[pFirstInterval->xl.v] < pFirstInterval->xr.z[pFirstInterval->xr.v] &&
        pFirstInterval->xl.v >= pFirstInterval->xr.v)
     {

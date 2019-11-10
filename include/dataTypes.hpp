@@ -48,10 +48,13 @@ struct Interval
   Interval(const Point& _xl, const Point& _xr) : xl(_xl), xr(_xr) {}
 };
 
-inline bool operator<(const Interval& i1, const Interval& i2)
+struct CompareIntervals
 {
-  return i1.xl.x < i2.xl.x;
-}
+  bool operator() (const Interval* i1, const Interval* i2) const
+  {
+    return i1->xl.x < i2->xl.x;
+  }
+};
 
 class CompareByR
 {
