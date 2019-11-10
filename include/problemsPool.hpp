@@ -27,6 +27,11 @@ public:
     return mProblems.size();
   }
 
+  unsigned GetConstraintsNumber(unsigned problemIndex) const
+  {
+    return 0;
+  }
+
   unsigned GetDimension(unsigned problemIndex = 0) const
   {
     return mProblems[problemIndex]->GetDimension();

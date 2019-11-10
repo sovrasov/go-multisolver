@@ -44,6 +44,7 @@ struct SolverParameters
 {
   double eps;
   double r;
+  double epsR = 0;
   unsigned numThreads;
   unsigned trialsLimit;
   unsigned evloventTightness = 12;
@@ -68,18 +69,20 @@ protected:
   SolverParameters mParameters;
   PoolType mProblems;
   std::vector<bool> mActiveProblemsMask;
-  std::vector<double> mHEstimations;
+  std::vector<std::vector<double>> mHEstimations;
+  std::vector<std::vector<double>> mZEstimations;
   std::vector<Trial> mOptimumEstimations;
   std::vector<Interval*> mNextIntervals;
   std::vector<Trial> mNextPoints;
   std::vector<double> mMinDifferences;
+  std::vector<int> mMaxIndexes;
   std::vector<std::set<Interval*>> mSearchInformations;
   std::vector<std::vector<double>> mLowerDomainBounds;
   std::vector<std::vector<double>> mUpperDomainBounds;
   solver_internal::PriorityQueue mQueue;
   std::vector<StatPoint> mStatiscics;
   Evolvent mEvolvent;
-  bool mNeeRefillQueue;
+  bool mNeedRefillQueue;
   unsigned mIterationsCounter;
   unsigned mNumberOfActiveProblems;
   unsigned mNumberOfTrials;
@@ -89,6 +92,9 @@ protected:
   void FirstIteration();
   void ClearDataStructures();
   void MakeTrials();
+  void MakeTrial(Trial&, int);
+  void MakeTrial(Point&, const double*, int);
+  void MakeTrial(const double*, int, double*, int&);
   double CalculateR(const Interval*);
   void InsertIntervals();
   void UpdateH(const Interval*);
@@ -117,7 +123,7 @@ double GOSolver<PoolType>::GetNextPointCoordinate(const Interval* i) const
   double diff = i->xr.z[v] - i->xl.z[v];
   return 0.5 * (i->xl.x + i->xr.x) -
     ((diff > 0.) ? 1. : -1.) * pow(fabs(diff) /
-      mHEstimations[i->problemIdx], mProblems.GetDimension()) / 2. / mParameters.r;
+      mHEstimations[i->problemIdx][v], mProblems.GetDimension()) / 2. / mParameters.r;
 }
 
 template <class PoolType>
@@ -136,7 +142,7 @@ void GOSolver<PoolType>::Solve()
     if(mParameters.logDeviations &&
         mNumberOfTrials % mParameters.statisticsUpdateStep == 0)
       CollectStatistics();
-    if (mNeeRefillQueue || mQueue.size() < mParameters.numThreads)
+    if (mNeedRefillQueue || mQueue.size() < mParameters.numThreads)
       RefillQueue();
     CalculateNextPoints();
     MakeTrials();
@@ -219,7 +225,7 @@ bool GOSolver<PoolType>::CheckStopCondition()
           solver_internal::vectorsMaxDiff(
             optimum, mNextPoints[i].y, mProblems.GetDimension()) << " Values diff: " <<
           mNextPoints[i].GetZ() - mProblems.GetOptimalValue(mNextIntervals[i]->problemIdx) <<
-          " H estimation: " << mHEstimations[mNextIntervals[i]->problemIdx] << "\n";
+          " H estimation: " << mHEstimations[mNextIntervals[i]->problemIdx][0] << "\n";
       }
 
       if (mNumberOfActiveProblems)
@@ -274,7 +280,7 @@ void GOSolver<PoolType>::RefillQueue()
       }
     }
 
-  mNeeRefillQueue = false;
+  mNeedRefillQueue = false;
 }
 
 template <class PoolType>
@@ -286,7 +292,7 @@ void GOSolver<PoolType>::EstimateOptimums()
     if(mNextPoints[i].z < mOptimumEstimations[problemIdx].z)
     {
       mOptimumEstimations[problemIdx] = mNextPoints[i];
-      mNeeRefillQueue = true;
+      mNeedRefillQueue = true;
     }
   }
 }
@@ -295,12 +301,12 @@ template <class PoolType>
 void GOSolver<PoolType>::UpdateH(const Interval* i)
 {
   double intervalH = fabs(i->xr.z[i->xr.v] - i->xl.z[i->xl.v]) / i->delta;
-  double oldH = mHEstimations[i->problemIdx];
+  double oldH = mHEstimations[i->problemIdx][0];
 
   if (intervalH > oldH || (oldH == 1.0 && intervalH > solver_internal::zeroHLevel))
   {
-    mHEstimations[i->problemIdx] = intervalH;
-    mNeeRefillQueue = true;
+    mHEstimations[i->problemIdx][0] = intervalH;
+    mNeedRefillQueue = true;
   }
 }
 
@@ -308,7 +314,7 @@ template <class PoolType>
 double GOSolver<PoolType>::CalculateR(const Interval* i)
 {
   unsigned problemIdx = i->problemIdx;
-  double h = mHEstimations[problemIdx];
+  double h = mHEstimations[problemIdx][0];
   double r = mParameters.r;
   int v = i->xr.v;
   double value = i->delta +
@@ -337,7 +343,7 @@ void GOSolver<PoolType>::InsertIntervals()
     UpdateH(mNextIntervals[i]);
     UpdateH(pNewInterval);
 
-    if(!mNeeRefillQueue)
+    if(!mNeedRefillQueue)
     {
       pNewInterval->R = CalculateR(pNewInterval);
       mNextIntervals[i]->R = CalculateR(mNextIntervals[i]);
@@ -354,8 +360,55 @@ void GOSolver<PoolType>::MakeTrials()
 #pragma omp parallel for num_threads(mParameters.numThreads)
   for(int i = 0; i < (int)mParameters.numThreads; i++)
   {
-    mNextPoints[i].v = 0;
-    mNextPoints[i].z[0] = mProblems.CalculateObjective(mNextPoints[i].y, mNextIntervals[i]->problemIdx);
+    MakeTrial(mNextPoints[i], mNextIntervals[i]->problemIdx);
+  }
+}
+
+template <class PoolType>
+void GOSolver<PoolType>::MakeTrial(Trial& t, int problem_idx)
+{
+  int index;
+  MakeTrial(t.y, problem_idx, t.z, index);
+  t.v = index;
+}
+
+template <class PoolType>
+void GOSolver<PoolType>::MakeTrial(Point& p, const double* y, int problem_idx)
+{
+  int index;
+  MakeTrial(y, problem_idx, p.z, index);
+  p.v = index;
+}
+
+template <class PoolType>
+void GOSolver<PoolType>::MakeTrial(const double* y, int problem_idx, double* z, int& idx)
+{
+  idx = 0;
+  while(idx < mProblems.GetConstraintsNumber(problem_idx))
+  {
+    double val = mProblems.CalculateObjective(y, problem_idx, idx);
+    z[idx] = val;
+    if (val > 0)
+      break;
+    idx++;
+  }
+
+  if(idx > mMaxIndexes[problem_idx])
+  {
+    mMaxIndexes[problem_idx] = idx;
+    for(int i = 0; i < mMaxIndexes[problem_idx]; i++)
+      mZEstimations[problem_idx][i] = -mParameters.epsR*mHEstimations[problem_idx][i];
+    mNeedRefillQueue = true;
+  }
+
+  if(idx == mProblems.GetConstraintsNumber(problem_idx))
+    z[idx] = mProblems.CalculateObjective(y, problem_idx, idx);
+
+  if(idx == mMaxIndexes[problem_idx] &&
+     z[idx] < mZEstimations[problem_idx][idx])
+  {
+    mZEstimations[problem_idx][idx] = z[idx];
+    mNeedRefillQueue = true;
   }
 }
 
@@ -373,10 +426,16 @@ void GOSolver<PoolType>::InitDataStructures()
   mSearchInformations.resize(mProblems.GetSize());
   mLowerDomainBounds.resize(mProblems.GetSize());
   mUpperDomainBounds.resize(mProblems.GetSize());
+  mMaxIndexes.resize(mProblems.GetSize());
+  std::fill(mMaxIndexes.begin(), mMaxIndexes.end(), -1);
   mStatiscics.resize(0);
   std::fill(mActiveProblemsMask.begin(), mActiveProblemsMask.end(), true);
   mHEstimations.resize(mProblems.GetSize());
-  std::fill(mHEstimations.begin(), mHEstimations.end(), 1.0);
+  std::fill(mHEstimations.begin(), mHEstimations.end(),
+            std::vector<double>(solverMaxFunctionsNum, 1.0));
+  mZEstimations.resize(mProblems.GetSize());
+  std::fill(mZEstimations.begin(), mZEstimations.end(),
+            std::vector<double>(solverMaxFunctionsNum, std::numeric_limits<double>::max()));
   mOptimumEstimations.resize(mProblems.GetSize());
   std::fill(mOptimumEstimations.begin(), mOptimumEstimations.end(), Trial(0.));
   mMinDifferences.resize(mProblems.GetSize());
@@ -412,9 +471,9 @@ void GOSolver<PoolType>::FirstIteration()
     pFirstInterval->problemIdx = i;
     double yl[solverMaxDim], yr[solverMaxDim];
     mEvolvent.GetImage(pFirstInterval->xl.x, yl, mLowerDomainBounds[i].data(), mUpperDomainBounds[i].data());
-    pFirstInterval->xl.z[pFirstInterval->xl.v] = mProblems.CalculateObjective(yl, i);
+    MakeTrial(pFirstInterval->xl, yl, i);
     mEvolvent.GetImage(pFirstInterval->xr.x, yr, mLowerDomainBounds[i].data(), mUpperDomainBounds[i].data());
-    pFirstInterval->xr.z[pFirstInterval->xr.v] = mProblems.CalculateObjective(yr, i);
+    MakeTrial(pFirstInterval->xr, yr, i);
     mSearchInformations[i].insert(pFirstInterval);
     UpdateH(pFirstInterval);
     if(pFirstInterval->xl.z[pFirstInterval->xl.v] < pFirstInterval->xr.z[pFirstInterval->xr.v] &&
@@ -436,7 +495,7 @@ void GOSolver<PoolType>::FirstIteration()
   CalculateNextPoints();
 
   mIterationsCounter = 1;
-  mNeeRefillQueue = true;
+  mNeedRefillQueue = true;
   mNumberOfActiveProblems = mProblems.GetSize();
   mNumberOfTrials = mProblems.GetSize() * 2;
 }
