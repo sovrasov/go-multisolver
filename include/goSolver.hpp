@@ -1,5 +1,4 @@
-#ifndef GO_SOLVER_HPP
-#define GO_SOLVER_HPP
+#pragma once
 
 #include "dataTypes.hpp"
 #include "evolvent.hpp"
@@ -119,11 +118,17 @@ public:
 template <class PoolType>
 double GOSolver<PoolType>::GetNextPointCoordinate(const Interval* i) const
 {
-  int v = i->xl.v;
-  double diff = i->xr.z[v] - i->xl.z[v];
-  return 0.5 * (i->xl.x + i->xr.x) -
-    ((diff > 0.) ? 1. : -1.) * pow(fabs(diff) /
-      mHEstimations[i->problemIdx][v], mProblems.GetDimension()) / 2. / mParameters.r;
+  double x;
+  if(i->xr.v == i->xl.v)
+  {
+    const int v = i->xl.v;
+    double diff = i->xr.z[v] - i->xl.z[v];
+    return 0.5 * (i->xl.x + i->xr.x) -
+     ((diff > 0.) ? 1. : -1.) * pow(fabs(diff) /
+       mHEstimations[i->problemIdx][v], mProblems.GetDimension()) / 2. / mParameters.r;
+  }
+  else
+    return 0.5 * (i->xr.x + i->xl.x);
 }
 
 template <class PoolType>
@@ -289,10 +294,10 @@ void GOSolver<PoolType>::EstimateOptimums()
   for(size_t i = 0; i < mParameters.numThreads; i++)
   {
     unsigned problemIdx = mNextIntervals[i]->problemIdx;
-    if(mNextPoints[i].z < mOptimumEstimations[problemIdx].z)
+    if(mNextPoints[i].v == mOptimumEstimations[problemIdx].v && mNextPoints[i].GetZ() < mOptimumEstimations[problemIdx].GetZ() ||
+        mNextPoints[i].v > mOptimumEstimations[problemIdx].v)
     {
       mOptimumEstimations[problemIdx] = mNextPoints[i];
-      mNeedRefillQueue = true;
     }
   }
 }
@@ -522,5 +527,3 @@ std::vector<Trial> GOSolver<PoolType>::GetOptimumEstimations()
 {
   return mOptimumEstimations;
 }
-
-#endif
