@@ -24,7 +24,6 @@ add_executable(solve_sample ${CMAKE_CURRENT_SOURCE_DIR}/src/solve_sample.cpp)
 target_link_libraries(solve_sample multisolver_core gkls_functions grishagin_functions ${OpenMP_CXX_LIBRARIES})
 set_target_properties(solve_sample PROPERTIES COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
 
-message(${CMAKE_CURRENT_SOURCE_DIR}/3rd-party/)
 file(GLOB GCGEN_SRC_FILES
                     ${CMAKE_CURRENT_SOURCE_DIR}/3rd-party/GCGen/sample_src/GKLS/*.hpp
                     ${CMAKE_CURRENT_SOURCE_DIR}/3rd-party/GCGen/sample_src/GKLS/*.cpp

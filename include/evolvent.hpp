@@ -1,5 +1,4 @@
-#ifndef EVOLVENT_HPP
-#define EVOLVENT_HPP
+#pragma once
 
 #define MAX_PREIMAGES 32
 
@@ -27,6 +26,3 @@ public:
   void GetImage(double x, double y[], const double lb[], const double ub[]) const;
   int GetAllPreimages(double* p, double xp[]);
 };
-
-
-#endif

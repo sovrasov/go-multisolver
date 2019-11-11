@@ -7,6 +7,7 @@
 #include <set>
 #include <queue>
 #include <iostream>
+#include <tuple>
 #include <algorithm>
 #include <stdexcept>
 #include <cmath>
@@ -120,7 +121,6 @@ public:
 template <class PoolType>
 double GOSolver<PoolType>::GetNextPointCoordinate(const Interval* i) const
 {
-  double x;
   if(i->xr.v == i->xl.v)
   {
     const int v = i->xl.v;

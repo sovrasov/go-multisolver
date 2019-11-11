@@ -1,5 +1,6 @@
-#ifndef DATA_TYPES_HPP
-#define DATA_TYPES_HPP
+#pragma once
+
+#include <cstring>
 
 const unsigned solverMaxDim = 5;
 const unsigned solverMaxFunctionsNum = 5;
@@ -76,5 +77,3 @@ struct StatPoint
   StatPoint(unsigned _trial, double _maxDev = 0., double _meanDev = 0.) :
     trial(_trial), maxDev(_maxDev), meanDev(_meanDev), problems_solved(0) {}
 };
-
-#endif
