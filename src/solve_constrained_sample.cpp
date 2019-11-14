@@ -26,6 +26,7 @@ int main(int argc, char** argv)
     false, 4.5, cmdline::range(1., 1000.));
   parser.add<double>("accuracy", 'e', "accuracy of the method", false, 0.01);
   parser.add<int>("trialsLimit", 'l', "limit of trials for the method", false, 5000000);
+  parser.add<unsigned>("problemsNum", 'n', "number of generated test problems", false, 100);
   parser.add("saveStatistics", 's', "determines whether the method will "
     "save statistics of deviations");
   parser.add("verbose", 'v', "determines whether the method print information messages");
@@ -45,7 +46,8 @@ int main(int argc, char** argv)
   parameters.verbose = parser.exist("verbose");
   parameters.evloventTightness = parser.get<int>("evolventTightness");
   std::vector<StatPoint> statistics;
-  const unsigned nProblems = 100;
+  const unsigned nProblems = parser.get<unsigned>("problemsNum");
+  const int problems_dimension = parser.get<int>("dimension");
 
   auto start = std::chrono::system_clock::now();
   if (parser.get<std::string>("runMode") == std::string("multi"))
@@ -58,13 +60,14 @@ int main(int argc, char** argv)
       if(i % 2 == 0 || !parser.exist("mixedClass"))
       {
         auto* problem = new TGKLSConstrainedProblem(cptInFeasibleDomain, 0.3, 0,
-                                                    i + 1, parser.get<int>("dimension"), problemsClass, TD);
-        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem));
+                                                    i + 1, problems_dimension, problemsClass, TD);
+        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem),
+                 std::vector<double>(problems_dimension, -1), std::vector<double>(problems_dimension, 1));
       }
       else
       {
         auto* problem = new GrishaginConstrainedProblem(cptInFeasibleDomain, 0.3, 0, i + 1);
-        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem));
+        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem), std::vector<double>(2, 0), std::vector<double>(2, 1));
       }
     }
     std::cout << "Problems pool created\n";
@@ -116,13 +119,15 @@ int main(int argc, char** argv)
       if(i % 2 == 0 || !parser.exist("mixedClass"))
       {
         problem = new TGKLSConstrainedProblem(cptInFeasibleDomain, 0.3, 0,
-                                                    i + 1, parser.get<int>("dimension"), problemsClass, TD);
-        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem));
+                                                    i + 1, problems_dimension, problemsClass, TD);
+        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem),
+                 std::vector<double>(problems_dimension, -1), std::vector<double>(problems_dimension, 1));
       }
       else
       {
         problem = new GrishaginConstrainedProblem(cptInFeasibleDomain, 0.3, 0, i + 1);
-        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem));
+        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem),
+                 std::vector<double>(2, 0), std::vector<double>(2, 1));
       }
 
       GOSolver<GCGenProblemsPool<IConstrainedOptProblem>> solver;

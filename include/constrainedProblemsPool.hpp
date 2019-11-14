@@ -2,6 +2,8 @@
 
 #include <vector>
 #include <memory>
+#include <algorithm>
+#include <exception>
 
 template <class FType>
 class GCGenProblemsPool
@@ -9,17 +11,23 @@ class GCGenProblemsPool
 protected:
 
   std::vector<std::shared_ptr<FType>> mProblems;
+  std::vector<std::pair<std::vector<double>,std::vector<double>>> mBounds;
 
 public:
 
-  void Add(std::shared_ptr<FType> problem)
+  void Add(std::shared_ptr<FType> problem, const std::vector<double>& lBounds,
+           const std::vector<double>& uBounds)
   {
     mProblems.push_back(problem);
+    if (problem->GetDimension() != lBounds.size() || problem->GetDimension() != uBounds.size())
+      throw std::runtime_error("Problem and bound dimension mismatch");
+    mBounds.push_back(std::make_pair(lBounds, uBounds));
   }
 
   void GetBounds(double* lb, double* ub, unsigned problemIndex)
   {
-    throw -1;
+    std::copy_n(mBounds[problemIndex].first.begin(), mBounds[problemIndex].first.size(), lb);
+    std::copy_n(mBounds[problemIndex].second.begin(), mBounds[problemIndex].second.size(), ub);
   }
 
   unsigned GetConstraintsNumber(unsigned problemIndex) const

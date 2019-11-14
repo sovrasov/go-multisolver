@@ -142,7 +142,6 @@ void GOSolver<PoolType>::Solve()
   MakeTrials();
   if(mParameters.logDeviations)
     CollectStatistics();
-
   do {
     EstimateOptimums();
     InsertIntervals();
