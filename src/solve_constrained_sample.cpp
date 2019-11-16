@@ -61,13 +61,12 @@ int main(int argc, char** argv)
       {
         auto* problem = new TGKLSConstrainedProblem(cptInFeasibleDomain, 0.3, 0,
                                                     i + 1, problems_dimension, problemsClass, TD);
-        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem),
-                 std::vector<double>(problems_dimension, -1), std::vector<double>(problems_dimension, 1));
+        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem));
       }
       else
       {
         auto* problem = new GrishaginConstrainedProblem(cptInFeasibleDomain, 0.3, 0, i + 1);
-        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem), std::vector<double>(2, 0), std::vector<double>(2, 1));
+        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem));
       }
     }
     std::cout << "Problems pool created\n";
@@ -120,14 +119,12 @@ int main(int argc, char** argv)
       {
         problem = new TGKLSConstrainedProblem(cptInFeasibleDomain, 0.3, 0,
                                                     i + 1, problems_dimension, problemsClass, TD);
-        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem),
-                 std::vector<double>(problems_dimension, -1), std::vector<double>(problems_dimension, 1));
+        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem));
       }
       else
       {
         problem = new GrishaginConstrainedProblem(cptInFeasibleDomain, 0.3, 0, i + 1);
-        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem),
-                 std::vector<double>(2, 0), std::vector<double>(2, 1));
+        pool.Add(std::shared_ptr<IConstrainedOptProblem>(problem));
       }
 
       GOSolver<GCGenProblemsPool<IConstrainedOptProblem>> solver;

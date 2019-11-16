@@ -15,13 +15,14 @@ protected:
 
 public:
 
-  void Add(std::shared_ptr<FType> problem, const std::vector<double>& lBounds,
-           const std::vector<double>& uBounds)
+  void Add(std::shared_ptr<FType> problem)
   {
     mProblems.push_back(problem);
-    if (problem->GetDimension() != lBounds.size() || problem->GetDimension() != uBounds.size())
+    std::vector<double> lb, ub;
+    problem->GetBounds(lb, ub);
+    if (problem->GetDimension() != lb.size() || problem->GetDimension() != ub.size())
       throw std::runtime_error("Problem and bound dimension mismatch");
-    mBounds.push_back(std::make_pair(lBounds, uBounds));
+    mBounds.push_back(std::make_pair(lb, ub));
   }
 
   void GetBounds(double* lb, double* ub, unsigned problemIndex)
