@@ -344,6 +344,8 @@ void GOSolver<PoolType>::UpdateAllH(solver_internal::IntervalsSet::iterator iter
     }
 
     //left lookup
+    if (leftIterator == mSearchInformations[problem_idx].begin())
+        return;
     --leftIterator;
     while(leftIterator != mSearchInformations[problem_idx].begin() && (*leftIterator)->xl.v < pInterval->xl.v)
       --leftIterator;
