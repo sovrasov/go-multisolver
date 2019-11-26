@@ -24,6 +24,10 @@ add_executable(solve_sample ${CMAKE_CURRENT_SOURCE_DIR}/src/solve_sample.cpp)
 target_link_libraries(solve_sample multisolver_core gkls_functions grishagin_functions ${OpenMP_CXX_LIBRARIES})
 set_target_properties(solve_sample PROPERTIES COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
 
+add_executable(solve_mco_sample ${CMAKE_CURRENT_SOURCE_DIR}/src/solve_mco_sample.cpp)
+target_link_libraries(solve_mco_sample multisolver_core ${OpenMP_CXX_LIBRARIES})
+set_target_properties(solve_mco_sample PROPERTIES COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
+
 file(GLOB GCGEN_SRC_FILES
                     ${CMAKE_CURRENT_SOURCE_DIR}/3rd-party/GCGen/sample_src/GKLS/*.hpp
                     ${CMAKE_CURRENT_SOURCE_DIR}/3rd-party/GCGen/sample_src/GKLS/*.cpp
@@ -41,6 +45,7 @@ set_target_properties(solve_constrained_sample PROPERTIES COMPILE_FLAGS ${OpenMP
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   target_compile_options(solve_sample INTERFACE -Wall -march=native)
+  target_compile_options(solve_mco_sample INTERFACE -Wall -march=native)
   target_compile_options(solve_constrained_sample INTERFACE -Wall -march=native)
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   add_definitions(/EHsc /openmp)
