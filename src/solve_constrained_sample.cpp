@@ -24,6 +24,7 @@ int main(int argc, char** argv)
         cmdline::range(9, 16));
   parser.add<double>("reliability", 'r', "reliability parameter for the method",
     false, 4.5, cmdline::range(1., 1000.));
+  parser.add<double>("reserves", 0, "eps-reservation parameter", false, 0);
   parser.add<double>("accuracy", 'e', "accuracy of the method", false, 0.01);
   parser.add<int>("trialsLimit", 'l', "limit of trials for the method", false, 5000000);
   parser.add<unsigned>("problemsNum", 'n', "number of generated test problems", false, 100);
@@ -44,6 +45,7 @@ int main(int argc, char** argv)
     parser.get<int>("threadsNum"),
     parser.get<int>("trialsLimit"), StopType::OptimumVicinity);
   parameters.verbose = parser.exist("verbose");
+  parameters.epsR = parser.get<double>("reserves");
   parameters.evloventTightness = parser.get<int>("evolventTightness");
   std::vector<StatPoint> statistics;
   const unsigned nProblems = parser.get<unsigned>("problemsNum");

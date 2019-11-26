@@ -2,6 +2,8 @@
 #include <cmdline.h>
 
 #include <iostream>
+#include <fstream>
+#include <chrono>
 
 #include "mco_problems_adapter.hpp"
 #include "goSolver.hpp"
@@ -13,6 +15,7 @@ int main(int argc, char** argv)
      cmdline::range(1, 32));
   parser.add<int>("evolventTightness", 't', "", false, 12,
         cmdline::range(9, 16));
+  parser.add<double>("reserves", 0, "eps-reservation parameter", false, 0);
   parser.add<double>("reliability", 'r', "reliability parameter for the method",
     false, 4.5, cmdline::range(1., 1000.));
   parser.add<double>("accuracy", 'e', "accuracy of the method", false, 0.01);
@@ -23,6 +26,8 @@ int main(int argc, char** argv)
   parser.add("verbose", 'v', "determines whether the method print information messages");
   parser.add<std::string>("statFile", 'f', "name of the file to write statistics",
     false, "statistics.csv");
+  parser.add<std::string>("save_points", 0, "name of the file to save solution",
+    false, "");
   parser.add<std::string>("runMode", 'm', "", false, "multi", cmdline::oneof(
     std::string("multi"), std::string("synch"), std::string("asynch")));
   parser.parse_check(argc, argv);
@@ -41,17 +46,39 @@ int main(int argc, char** argv)
     parser.get<int>("trialsLimit"), StopType::Accuracy);
   parameters.verbose = parser.exist("verbose");
   parameters.evloventTightness = parser.get<int>("evolventTightness");
+  parameters.epsR = parser.get<double>("reserves");
+
   solver.SetParameters(parameters);
   solver.SetProblemsPool(problem);
   std::cout << "Solver started\n";
+  auto start = std::chrono::system_clock::now();
   solver.Solve();
+  auto end = std::chrono::system_clock::now();
+  std::chrono::duration<double> elapsed_seconds = end - start;
+  std::cout << "Time elapsed: " << elapsed_seconds.count() << "s\n";
+  std::cout << "Number of trials: " << solver.GetTrialsNumber()
+    << "\nNumber of iterations: " << solver.GetIterationsNumber() << "\n";
   std::vector<Trial> optimumEstimations = solver.GetOptimumEstimations();
+
+  auto save_points_path = parser.get<std::string>("save_points");
+  std::ofstream points_file;
+  if (!save_points_path.empty())
+  {
+    points_file.open(save_points_path);
+    points_file << 2 << "\n" << 2 << "\n";
+  }
+
   for (const auto& paretoPoint : optimumEstimations)
   {
     double f1_val = f1(paretoPoint.y);
     double f2_val = f2(paretoPoint.y);
     if (paretoPoint.v == 2)
-      std::cout << "Pareto point: " << f1_val << ", " << f2_val << "\n";
+    {
+      //std::cout << "Pareto point: " << f1_val << ", " << f2_val << "\n";
+      if (points_file.is_open())
+        points_file << paretoPoint.y[0] << ", " << paretoPoint.y[1] << ", "
+                    << f1_val << ", " << f2_val << ";\n";
+    }
     else
       std::cout << "Failed to find a feasible point!" << '\n';
   }
