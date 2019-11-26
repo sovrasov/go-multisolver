@@ -33,9 +33,17 @@ public:
     if (numParetoPoints < 1)
       throw std::runtime_error("There sould be more than one Pareto point");
     mNumberOfParetoPoints = numParetoPoints;
-    double h = 1. / (mNumberOfParetoPoints - 1);
-    for (size_t i = 0; i < mNumberOfParetoPoints; i++)
-      mLambdas.push_back(i*h);
+    if (mNumberOfParetoPoints > 1)
+    {
+      double h = 1. / (mNumberOfParetoPoints - 1);
+      for (size_t i = 0; i < mNumberOfParetoPoints; i++)
+        mLambdas.push_back(i*h);
+    }
+  }
+
+  void SetLambdas(const std::vector<double> lambdas)
+  {
+    mLambdas = lambdas;
   }
 
   void GetBounds(double* lb, double* ub, unsigned problemIndex)
