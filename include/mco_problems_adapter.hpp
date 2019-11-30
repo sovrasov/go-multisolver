@@ -18,6 +18,7 @@ protected:
   std::vector<double> mUBound;
   std::vector<double> mLambdas;
   size_t mNumberOfParetoPoints;
+  std::function<double()> mComputeLoad = [] { return 1; };
 
 public:
   MultiObjectiveProblemAdapter() : mNumberOfParetoPoints(0) {}
@@ -39,6 +40,11 @@ public:
       for (size_t i = 0; i < mNumberOfParetoPoints; i++)
         mLambdas.push_back(i*h);
     }
+  }
+
+  void SetComputeLoad(std::function<double()> compute)
+  {
+    mComputeLoad = compute;
   }
 
   void SetLambdas(const std::vector<double> lambdas)
@@ -69,10 +75,17 @@ public:
 
   double CalculateObjective(const double* y, unsigned problemIdx, unsigned fIndex=0)
   {
+    double k = mComputeLoad();
     if (fIndex == GetConstraintsNumber(problemIdx))
-      return fmax(mObjectives[0](y) * mLambdas[problemIdx], mObjectives[1](y) * (1. - mLambdas[problemIdx]));
+    {
+      double val = k * fmax(mObjectives[0](y) * mLambdas[problemIdx], mObjectives[1](y) * (1. - mLambdas[problemIdx]));
+      return val / k;
+    }
     else
-      return mConstraints[fIndex](y);
+    {
+      double val = mConstraints[fIndex](y);
+      return val / k;
+    }
   }
 
   double GetOptimalValue(unsigned problemIndex) const

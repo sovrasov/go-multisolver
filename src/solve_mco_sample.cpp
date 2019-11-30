@@ -9,6 +9,47 @@
 #include "mco_problems_adapter.hpp"
 #include "goSolver.hpp"
 
+
+std::function<double()> buildComputeLoad(double delay)
+{
+  if (delay == 0)
+    return [] {return 1;};
+
+  double estimatedTime = 0;
+  unsigned complexity = 0;
+  unsigned delta = 500;
+
+  auto computeKernel = [](unsigned iters)
+  {
+    double value = 0;
+    for (unsigned i = 0; i < iters; i++)
+    {
+      double a1 = sin(value + i);
+      double a2 = cos(value + i);
+      value = a2*a2 + a1*a1;
+    }
+    return value + 1.;
+  };
+
+  double val = 0;
+  do
+  {
+    complexity += delta;
+    auto start = std::chrono::system_clock::now();
+    for(int i = 0; i < 100; i++)
+    {
+      val = computeKernel(complexity);
+    }
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    estimatedTime = elapsed_seconds.count() / 100;
+  }
+  while(estimatedTime * 1000. < delay);
+  std::cout << "Estimated delay: " << estimatedTime*1000 << "\t complexity: " << complexity << "\t kernel value: " << val << '\n';
+
+  return std::bind(computeKernel, complexity);
+}
+
 bool isVectorLess(const double* v1, const double* v2, int dim, double filterEps = 0)
 {
   for (int i = 0; i < dim; i++)
@@ -64,6 +105,7 @@ int main(int argc, char** argv)
     false, "statistics.csv");
   parser.add<std::string>("save_points", 0, "name of the file to save solution",
     false, "");
+  parser.add<double>("delay", 0, "Delay in objective functions (ms)", false, 0);
   parser.add<std::string>("runMode", 'm', "", false, "multi", cmdline::oneof(
     std::string("multi"), std::string("synch"), std::string("asynch")));
   parser.parse_check(argc, argv);
@@ -72,6 +114,8 @@ int main(int argc, char** argv)
   auto f2 = [](const double* x) {return pow(x[0] - 5, 2) + pow(x[1] - 5, 2);};
   auto g1 = [](const double* x) {return pow(x[0] - 5, 2) + x[1] * x[1] - 25;};
   auto g2 = [](const double* x) {return -pow(x[0] - 8, 2) - pow(x[1] + 3, 2) + 7.7;};
+
+  auto computeLoad = buildComputeLoad(parser.get<double>("delay"));
 
   unsigned num_pareto_points = parser.get<unsigned>("problemsNum");
   SolverParameters parameters(parser.get<double>("accuracy"),
@@ -89,6 +133,7 @@ int main(int argc, char** argv)
   if (parser.get<std::string>("runMode") == std::string("multi"))
   {
     MultiObjectiveProblemAdapter problem({f1, f2}, {g1, g2}, {0, 0}, {5, 3}, num_pareto_points);
+    problem.SetComputeLoad(computeLoad);
     GOSolver<MultiObjectiveProblemAdapter> solver;
     solver.SetParameters(parameters);
     solver.SetProblemsPool(problem);
@@ -121,6 +166,7 @@ int main(int argc, char** argv)
     {
       MultiObjectiveProblemAdapter problem({f1, f2}, {g1, g2}, {0, 0}, {5, 3}, 1);
       problem.SetLambdas({i*h});
+      problem.SetComputeLoad(computeLoad);
       GOSolver<MultiObjectiveProblemAdapter> solver;
       solver.SetParameters(parameters);
       solver.SetProblemsPool(problem);
