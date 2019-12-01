@@ -1,4 +1,3 @@
-#include <json.hpp>
 #include <cmdline.h>
 
 #include <iostream>
@@ -12,6 +11,7 @@
 
 #include "constrainedProblemsPool.hpp"
 #include "goSolver.hpp"
+#include "samples_common.hpp"
 
 int main(int argc, char** argv)
 {
@@ -37,6 +37,7 @@ int main(int argc, char** argv)
     std::string("multi"), std::string("synch"), std::string("asynch")));
   parser.add("hard", 'h', "determines type of GKLS functions");
   parser.add("mixedClass", 'c', "use mixed GKLS/Grishagin problems pool");
+  parser.add<double>("delay", 0, "Delay in objective functions (ms)", false, 0);
   parser.parse_check(argc, argv);
 
   GKLSClass problemsClass = parser.exist("hard") ? Hard : Simple;
@@ -51,6 +52,7 @@ int main(int argc, char** argv)
   const unsigned nProblems = parser.get<unsigned>("problemsNum");
   const int problems_dimension = parser.get<int>("dimension");
   std::chrono::duration<double> elapsed_seconds;
+  auto computeLoad = buildComputeLoad(parser.get<double>("delay"));
 
   if (parser.get<std::string>("runMode") == std::string("multi"))
   {
@@ -75,6 +77,7 @@ int main(int argc, char** argv)
 
     GOSolver<GCGenProblemsPool<IConstrainedOptProblem>> solver;
     solver.SetParameters(parameters);
+    pool.SetComputeLoad(computeLoad);
     solver.SetProblemsPool(pool);
     std::cout << "Solver started\n";
     auto start = std::chrono::system_clock::now();
@@ -134,6 +137,7 @@ int main(int argc, char** argv)
 
       GOSolver<GCGenProblemsPool<IConstrainedOptProblem>> solver;
       solver.SetParameters(parameters);
+      pool.SetComputeLoad(computeLoad);
       solver.SetProblemsPool(pool);
       auto start = std::chrono::system_clock::now();
       solver.Solve();
