@@ -50,8 +50,8 @@ int main(int argc, char** argv)
   std::vector<StatPoint> statistics;
   const unsigned nProblems = parser.get<unsigned>("problemsNum");
   const int problems_dimension = parser.get<int>("dimension");
+  std::chrono::duration<double> elapsed_seconds;
 
-  auto start = std::chrono::system_clock::now();
   if (parser.get<std::string>("runMode") == std::string("multi"))
   {
     parameters.logDeviations = parser.exist("saveStatistics");
@@ -77,7 +77,10 @@ int main(int argc, char** argv)
     solver.SetParameters(parameters);
     solver.SetProblemsPool(pool);
     std::cout << "Solver started\n";
+    auto start = std::chrono::system_clock::now();
     solver.Solve();
+    auto end = std::chrono::system_clock::now();
+    elapsed_seconds = end - start;
 
     std::vector<Trial> optimumEstimations = solver.GetOptimumEstimations();
     statistics = solver.GetStatistics();
@@ -132,7 +135,10 @@ int main(int argc, char** argv)
       GOSolver<GCGenProblemsPool<IConstrainedOptProblem>> solver;
       solver.SetParameters(parameters);
       solver.SetProblemsPool(pool);
+      auto start = std::chrono::system_clock::now();
       solver.Solve();
+      auto end = std::chrono::system_clock::now();
+      elapsed_seconds += end - start;
 
       auto optPoint = problem->GetOptimumPoint();
       double currentDev = solver_internal::vectorsMaxDiff(optPoint.data(),
@@ -160,8 +166,7 @@ int main(int argc, char** argv)
     std::cout << "Trials performed: " << lastStatistics.trial << "\n";
     std::cout << "Problems solved: " << lastStatistics.problems_solved << "\n";
   }
-  auto end = std::chrono::system_clock::now();
-  std::chrono::duration<double> elapsed_seconds = end - start;
+
   std::cout << "Time elapsed: " << elapsed_seconds.count() << "s\n";
 
   if(parser.exist("saveStatistics"))
