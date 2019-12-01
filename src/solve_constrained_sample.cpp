@@ -99,6 +99,7 @@ int main(int argc, char** argv)
   {
     parameters.numThreads = 1;
     StatPoint lastStatistics(0, 2., 2.);
+    auto start = std::chrono::system_clock::now();
 
 #if defined _MSC_VER
 
@@ -118,7 +119,6 @@ int main(int argc, char** argv)
 
 #pragma omp parallel for num_threads(parser.get<int>("threadsNum")), schedule(runtime)
 #endif
-
     for (int i = 0; i < (int)nProblems; i++)
     {
       GCGenProblemsPool<IConstrainedOptProblem> pool;
@@ -139,10 +139,7 @@ int main(int argc, char** argv)
       solver.SetParameters(parameters);
       pool.SetComputeLoad(computeLoad);
       solver.SetProblemsPool(pool);
-      auto start = std::chrono::system_clock::now();
       solver.Solve();
-      auto end = std::chrono::system_clock::now();
-      elapsed_seconds += end - start;
 
       auto optPoint = problem->GetOptimumPoint();
       double currentDev = solver_internal::vectorsMaxDiff(optPoint.data(),
@@ -167,6 +164,9 @@ int main(int argc, char** argv)
           " Dev: " << nextDeviation.meanDev << "\n";
       }
     }
+    auto end = std::chrono::system_clock::now();
+    elapsed_seconds = end - start;
+
     std::cout << "Trials performed: " << lastStatistics.trial << "\n";
     std::cout << "Problems solved: " << lastStatistics.problems_solved << "\n";
   }
@@ -177,6 +177,7 @@ int main(int argc, char** argv)
   {
     std::ofstream fout;
     fout.open(parser.get<std::string>("statFile"), std::ios_base::out);
+    fout << elapsed_seconds.count() << '\n';
 
     for (size_t i = 0; i < statistics.size(); i++)
       fout << statistics[i].trial << ", " << statistics[i].meanDev << ", " <<
