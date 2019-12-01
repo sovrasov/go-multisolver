@@ -53,6 +53,7 @@ int main(int argc, char** argv)
   const int problems_dimension = parser.get<int>("dimension");
   std::chrono::duration<double> elapsed_seconds;
   auto computeLoad = buildComputeLoad(parser.get<double>("delay"));
+  unsigned iters_num = 0;
 
   if (parser.get<std::string>("runMode") == std::string("multi"))
   {
@@ -88,8 +89,9 @@ int main(int argc, char** argv)
     std::vector<Trial> optimumEstimations = solver.GetOptimumEstimations();
     statistics = solver.GetStatistics();
 
+    iters_num += solver.GetIterationsNumber();
     std::cout << "Number of trials: " << solver.GetTrialsNumber()
-      << "\nNumber of iterations: " << solver.GetIterationsNumber() << "\n";
+      << "\nNumber of iterations: " << iters_num << "\n";
     if(!statistics.empty())
       std::cout << "Problems solved: " << statistics.back().problems_solved << std::endl;
     //  for(size_t i = 0; i < optimumEstimations.size(); i++)
@@ -147,6 +149,7 @@ int main(int argc, char** argv)
 
 #pragma omp critical
       {
+        iters_num += solver.GetIterationsNumber();
         StatPoint nextDeviation;
         nextDeviation.trial = solver.GetTrialsNumber() + lastStatistics.trial;
         if(statistics.size() != nProblems - 1)
@@ -178,6 +181,7 @@ int main(int argc, char** argv)
     std::ofstream fout;
     fout.open(parser.get<std::string>("statFile"), std::ios_base::out);
     fout << elapsed_seconds.count() << '\n';
+    fout << iters_num << '\n';
 
     for (size_t i = 0; i < statistics.size(); i++)
       fout << statistics[i].trial << ", " << statistics[i].meanDev << ", " <<
